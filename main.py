@@ -1,7 +1,7 @@
 import json
 from elements.Contract import Contract
 from elements.Nurse import Nurse
-import pandas as pd
+#import pandas as pd
 from elements.Shift import Shift
 from ortools.sat.python import cp_model
 
@@ -10,6 +10,7 @@ if __name__ == '__main__':
     contracts = []
     nurses = []
     shiftTypes = []
+    shiftRepr = ['O', 'E', 'L', 'N']
     weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     model = cp_model.CpModel()
@@ -18,7 +19,7 @@ if __name__ == '__main__':
         scenarioDict = json.load(file)
     with open('resources/datasets/n005w4/H0-n005w4-0.json') as file:
         historyDict = json.load(file)
-    with open('resources/datasets/n005w4/WD-n005w4-0.json') as file:
+    with open('resources/datasets/n005w4/WD-n005w4-1.json') as file:
         weekDict = json.load(file)
 
 for i in scenarioDict['contracts']:
@@ -38,18 +39,34 @@ for i in nurses:
 
 skills = scenarioDict['skills']
 
-print(skills)
+all_nurses = range(len(nurses))
+all_working_shifts = range(len(shiftTypes))
+all_shifts = range(len(shiftTypes) + 1)
+all_days = range(len(weekDays))
+all_skills = range(len(skills))
 
-all_nurses = range(len(nurses)-1)
-all_shifts = range(len(shiftTypes)-1)
-all_days = range(len(weekDays)-1)
-all_skills = range(len(skills)-1)
 
-obj_int_vars = []
-obj_int_coeffs = []
+def create_forbidden_succession(scData):
+    forbidden_array_str = []
+    forbidden_array_int = []
+    for i in range(len(scData['forbiddenShiftTypeSuccessions'])):
+        if not scData['forbiddenShiftTypeSuccessions'][i]['succeedingShiftTypes']:
+            pass
+        else:
+            if scData['forbiddenShiftTypeSuccessions'][i]['precedingShiftType'] == 'Early' or 'Late' or 'Night':
+                for j in range(len(scData['forbiddenShiftTypeSuccessions'][i]['succeedingShiftTypes'])):
+                    forbidden_array_str.append((scData['forbiddenShiftTypeSuccessions'][i]['precedingShiftType'],
+                                            scData['forbiddenShiftTypeSuccessions'][i]['succeedingShiftTypes'][j],
+                                            0))
+    for tuple in forbidden_array_str:
+        temp = list(map(lambda x: 1 if x=='Early' else x,tuple))
+        temp1 = list(map(lambda x: 2 if x=='Late' else x,temp))
+        temp2 = list(map(lambda x: 3 if x=='Night' else x,temp1))
+        forbidden_array_int.append(temp2)
 
-print(all_shifts)
-print(weekDict['requirements'][0]['skill'])
+        #res = [item.replace('Early', 1) for item in forbidden_array[i]]
+
+    return forbidden_array_int
 
 def create_weekly_demand(wData, wDays):
     nurse_demand = []
@@ -71,16 +88,20 @@ def create_weekly_demand(wData, wDays):
                     head_early += req['minimum']
                 elif wData['requirements'][j]['shiftType'] == 'Late':
                     head_late += req['minimum']
-                else:
+                elif wData['requirements'][j]['shiftType'] == 'Night':
                     head_night += req['minimum']
+                else:
+                    pass
             else:
                 req = wData['requirements'][j]['requirementOn'+ wDays[i]]
                 if wData['requirements'][j]['shiftType'] == 'Early':
                     nurse_early += req['minimum']
                 elif wData['requirements'][j]['shiftType'] == 'Late':
                     nurse_late += req['minimum']
-                else:
+                elif wData['requirements'][j]['shiftType'] == 'Night':
                     nurse_night += req['minimum']
+                else:
+                    pass
         headnurse_demand.append((head_early, head_late, head_night))
         nurse_demand.append((nurse_early, nurse_late, nurse_night))
         demand.append((head_early + nurse_early, head_late + nurse_late, head_night + nurse_night))
@@ -88,41 +109,63 @@ def create_weekly_demand(wData, wDays):
     return headnurse_demand, nurse_demand, demand
 
 weekly_demand = create_weekly_demand(weekDict, weekDays)
-excess_cover_penalties = (2, 2, 5)
+forbidden_shift_succession = create_forbidden_succession(scenarioDict)
 
 # Creates shift variables.
 shifts = {}
 for n in all_nurses:
     for d in all_days:
         for s in all_shifts:
-            shifts[(n, d,s)] = model.NewBoolVar('shift_n%id%is%i' % (n, d, s))
+            shifts[(n, d, s)] = model.NewBoolVar('shift_n%id%is%i' % (n, d, s))
 
-# Exactly one shift per day.
+# H1: Exactly one shift per day.
 for n in all_nurses:
     for d in all_days:
-        model.Add((shifts[n, d, s] for s in all_shifts) == 1)
+        model.AddExactlyOne((shifts[n, d, s] for s in all_shifts))
 
-# Each shift is assigned to min requirements of nurses.
-for d in all_days:
-    for s in all_shifts:
+# H2: Each shift is assigned to min requirements of nurses.
+for s in range(1, len(shiftRepr)):
+    for d in all_days:
         works = [shifts[n, d, s] for n in all_nurses]
-        min_demand = weekly_demand[2][d][s]
-        print(min_demand)
-        worked = model.NewIntVar(min_demand, all_nurses, '')
+        min_demand = weekly_demand[2][d][s - 1]
+        worked = model.NewIntVar(min_demand, len(nurses), '')
         model.Add(worked == sum(works))
-        over_penalty = excess_cover_penalties[s - 1]
-        if over_penalty > 0:
-             name = 'excess_demand(shift=%i, week=%i, day=%i)' % (s, 1,
-                                                                  d)
-             excess = model.NewIntVar(0, all_nurses - min_demand,
-                                      name)
-             model.Add(excess == worked - min_demand)
-             obj_int_vars.append(excess)
-             obj_int_coeffs.append(over_penalty)
-        model.Add(sum(shifts[(n, d, s)] for n in all_nurses) == 1)
 
-print(create_weekly_demand(weekDict, weekDays)[2])
+# H3: Forbidden shift successions
+for previous_shift, next_shift, cost in forbidden_shift_succession:
+    for n in all_nurses:
+        for d in range((len(all_days) - 1)):
+            transition = [shifts[n, d, previous_shift].Not(), shifts[n, d + 1, next_shift].Not()]
+            model.AddBoolOr(transition)
 
-df = pd.DataFrame(scenarioDict['nurses'])
-pd.set_option("max_colwidth", 40)
-print(df)
+# Solve the model.
+solver = cp_model.CpSolver()
+solution_printer = cp_model.ObjectiveSolutionPrinter()
+status = solver.Solve(model, solution_printer)
+
+if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+    print()
+    header = '          '
+    for w in range(1):
+        header += 'M T W T F S S '
+    print(header)
+    for n in all_nurses:
+        schedule = ''
+        for d in all_days:
+            for s in all_shifts:
+                if solver.BooleanValue(shifts[n, d, s]):
+                    schedule += shiftRepr[s] + ' '
+        print(''f"{nurses[n].id}"': %s' % (schedule))
+
+
+print('  - status          : %s' % solver.StatusName(status))
+print('\nStatistics')
+print('  - conflicts      : %i' % solver.NumConflicts())
+print('  - branches       : %i' % solver.NumBranches())
+print('  - wall time      : %f s' % solver.WallTime())
+print('  - solutions found: %i' % solution_printer.solution_count())
+
+
+#df = pd.DataFrame(scenarioDict['nurses'])
+#pd.set_option("max_colwidth", 40)
+#print(df)
