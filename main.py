@@ -45,7 +45,6 @@ all_shifts = range(len(shiftTypes) + 1)
 all_days = range(len(weekDays))
 all_skills = range(len(skills))
 
-
 def create_forbidden_succession(scData):
     forbidden_array_str = []
     forbidden_array_int = []
@@ -108,8 +107,14 @@ def create_weekly_demand(wData, wDays):
 
     return headnurse_demand, nurse_demand, demand
 
+def find_indices(lst, condition):
+    return [i for i, elem in enumerate(lst) if condition(elem)]
+
 weekly_demand = create_weekly_demand(weekDict, weekDays)
 forbidden_shift_succession = create_forbidden_succession(scenarioDict)
+
+obj_int_vars = []
+obj_int_coeffs = []
 
 # Creates shift variables.
 shifts = {}
@@ -123,13 +128,22 @@ for n in all_nurses:
     for d in all_days:
         model.AddExactlyOne((shifts[n, d, s] for s in all_shifts))
 
-# H2: Each shift is assigned to min requirements of nurses.
-for s in range(1, len(shiftRepr)):
+# H2 H4: Each shift is assigned to min requirements of nurses depending on their skills.
+for s in range(1, len(shiftTypes) + 1):
     for d in all_days:
-        works = [shifts[n, d, s] for n in all_nurses]
-        min_demand = weekly_demand[2][d][s - 1]
-        worked = model.NewIntVar(min_demand, len(nurses), '')
-        model.Add(worked == sum(works))
+        for f in range(len(skills)):
+            works = [shifts[n, d, s] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
+            min_demand = weekly_demand[f][d][s - 1]
+            worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
+            model.Add(worked == sum(works))
+            name = 'excess_demand(shift=%i, week=%i, day=%i)' % (s, 1, d)
+            excess = model.NewIntVar(0, len(find_indices(nurses, lambda n: skills[f] in n.skills)) - min_demand,
+                                     name)
+            model.Add(excess == worked - min_demand)
+            obj_int_vars.append(excess)
+            obj_int_coeffs.append(30)
+
+
 
 # H3: Forbidden shift successions
 for previous_shift, next_shift, cost in forbidden_shift_succession:
@@ -137,6 +151,9 @@ for previous_shift, next_shift, cost in forbidden_shift_succession:
         for d in range((len(all_days) - 1)):
             transition = [shifts[n, d, previous_shift].Not(), shifts[n, d + 1, next_shift].Not()]
             model.AddBoolOr(transition)
+
+
+model.Minimize(sum(obj_int_vars[i] * obj_int_coeffs[i] for i in range(len(obj_int_vars))))
 
 # Solve the model.
 solver = cp_model.CpSolver()
@@ -155,11 +172,11 @@ if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             for s in all_shifts:
                 if solver.BooleanValue(shifts[n, d, s]):
                     schedule += shiftRepr[s] + ' '
-        print(''f"{nurses[n].id}"': %s' % (schedule))
+        print('nurse %i: %s' % (n, schedule))
 
 
-print('  - status          : %s' % solver.StatusName(status))
 print('\nStatistics')
+print('  - status          : %s' % solver.StatusName(status))
 print('  - conflicts      : %i' % solver.NumConflicts())
 print('  - branches       : %i' % solver.NumBranches())
 print('  - wall time      : %f s' % solver.WallTime())
