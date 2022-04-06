@@ -110,12 +110,29 @@ def create_weekly_demand(wData, wDays):
 def find_indices(lst, condition):
     return [i for i, elem in enumerate(lst) if condition(elem)]
 
+def create_request(wData, nurseList, shiftList, dayList):
+    requests = []
+    for i in wData['shiftOffRequests']:
+        temp = [(find_indices(nurseList, lambda n: i['nurse'] in n.id)),
+                find_indices(shiftList, lambda n: i['shiftType'] in n.id),
+                find_indices(dayList, lambda n: i['day'] in n),
+                [10]]
+        for j, k in enumerate(temp):
+            if k == []:
+                temp[j] = [0]
+        request = [x for x, in temp]
+        requests.append(request)
+    return requests
+
+requests = create_request(weekDict, nurses, shiftTypes, weekDays)
+print(requests)
 weekly_demand = create_weekly_demand(weekDict, weekDays)
 forbidden_shift_succession = create_forbidden_succession(scenarioDict)
 
 obj_int_vars = []
 obj_int_coeffs = []
-
+obj_bool_vars = []
+obj_bool_coeffs = []
 # Creates shift variables.
 shifts = {}
 for n in all_nurses:
@@ -128,7 +145,7 @@ for n in all_nurses:
     for d in all_days:
         model.AddExactlyOne((shifts[n, d, s] for s in all_shifts))
 
-# H2 H4: Each shift is assigned to min requirements of nurses depending on their skills.
+# H2 H4 S1: Each shift is assigned to min requirements of nurses depending on their skills.
 for s in range(1, len(shiftTypes) + 1):
     for d in all_days:
         for f in range(len(skills)):
@@ -152,8 +169,16 @@ for previous_shift, next_shift, cost in forbidden_shift_succession:
             transition = [shifts[n, d, previous_shift].Not(), shifts[n, d + 1, next_shift].Not()]
             model.AddBoolOr(transition)
 
+# S4 Preferences
+for n, s, d, w in requests:
+    obj_bool_vars.append(shifts[n, d, s])
+    obj_bool_coeffs.append(w)
 
-model.Minimize(sum(obj_int_vars[i] * obj_int_coeffs[i] for i in range(len(obj_int_vars))))
+model.Minimize(
+    sum(obj_bool_vars[i] * obj_bool_coeffs[i]
+    for i in range(len(obj_bool_vars))) +
+    sum(obj_int_vars[i] * obj_int_coeffs[i]
+    for i in range(len(obj_int_vars))))
 
 # Solve the model.
 solver = cp_model.CpSolver()
@@ -174,6 +199,19 @@ if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
                     schedule += shiftRepr[s] + ' '
         print('nurse %i: %s' % (n, schedule))
 
+    print('Penalties:')
+    for i, var in enumerate(obj_bool_vars):
+        if solver.BooleanValue(var):
+            penalty = obj_bool_coeffs[i]
+            if penalty > 0:
+                print('  %s violated, penalty=%i' % (var.Name(), penalty))
+            else:
+                print('  %s fulfilled, gain=%i' % (var.Name(), -penalty))
+
+    for i, var in enumerate(obj_int_vars):
+        if solver.Value(var) > 0:
+            print('  %s violated by %i, linear penalty=%i' %
+                  (var.Name(), solver.Value(var), obj_int_coeffs[i]))
 
 print('\nStatistics')
 print('  - status          : %s' % solver.StatusName(status))
