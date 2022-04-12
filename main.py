@@ -53,6 +53,7 @@ all_shifts = range(len(shiftTypes) + 1)
 all_days = range(len(weekDays) * len(planningHorizon))
 all_skills = range(len(skills))
 
+print(shiftTypes[0].id)
 
 shift_sequence_constraints = [(1, 2, 2,  15, 5, 5, 15), (2, 2, 2, 15, 3, 3, 15), (3, 4, 4, 15, 5, 5, 15)]
 day_off_sequence_constraints = [(2, 2, 30, 3, 3, 30), (3, 3, 30, 5, 5, 30)]
@@ -75,6 +76,7 @@ def create_forbidden_succession(scData):
         temp = list(map(lambda x: 1 if x=='Early' else x,tuple))
         temp1 = list(map(lambda x: 2 if x=='Late' else x,temp))
         temp2 = list(map(lambda x: 3 if x=='Night' else x,temp1))
+
         forbidden_array_int.append(temp2)
 
         #res = [item.replace('Early', 1) for item in forbidden_array[i]]
@@ -239,6 +241,58 @@ def add_soft_sequence_constraint(model, works, hard_min, soft_min, min_cost,
 
     return cost_literals, cost_coefficients
 
+def add_soft_sum_constraint(model, works, hard_min, soft_min, min_cost,
+                            soft_max, hard_max, max_cost, prefix):
+    """Sum constraint with soft and hard bounds.
+  This constraint counts the variables assigned to true from works.
+  If forbids sum < hard_min or > hard_max.
+  Then it creates penalty terms if the sum is < soft_min or > soft_max.
+  Args:
+    model: the sequence constraint is built on this model.
+    works: a list of Boolean variables.
+    hard_min: any sequence of true variables must have a sum of at least
+      hard_min.
+    soft_min: any sequence should have a sum of at least soft_min, or a linear
+      penalty on the delta will be added to the objective.
+    min_cost: the coefficient of the linear penalty if the sum is less than
+      soft_min.
+    soft_max: any sequence should have a sum of at most soft_max, or a linear
+      penalty on the delta will be added to the objective.
+    hard_max: any sequence of true variables must have a sum of at most
+      hard_max.
+    max_cost: the coefficient of the linear penalty if the sum is more than
+      soft_max.
+    prefix: a base name for penalty variables.
+  Returns:
+    a tuple (variables_list, coefficient_list) containing the different
+    penalties created by the sequence constraint.
+  """
+    cost_variables = []
+    cost_coefficients = []
+    sum_var = model.NewIntVar(hard_min, hard_max, '')
+    model.Add(sum_var == sum(works))
+
+    # Penalize sums below the soft_min target.
+    if soft_min > hard_min and min_cost > 0:
+        delta = model.NewIntVar(-len(works), len(works), '')
+        model.Add(delta == soft_min - sum_var)
+        # TODO(user): Compare efficiency with only excess >= soft_min - sum_var.
+        excess = model.NewIntVar(0, hard_max, prefix + ': under_sum')
+        model.AddMaxEquality(excess, [delta, 0])
+        cost_variables.append(excess)
+        cost_coefficients.append(min_cost)
+
+    # Penalize sums above the soft_max target.
+    if soft_max < hard_max and max_cost > 0:
+        delta = model.NewIntVar(-hard_max, hard_max, '')
+        model.Add(delta == sum_var - soft_max)
+        excess = model.NewIntVar(0, hard_max, prefix + ': over_sum')
+        model.AddMaxEquality(excess, [delta, 0])
+        cost_variables.append(excess)
+        cost_coefficients.append(max_cost)
+
+    return cost_variables, cost_coefficients
+
 weekly_demand = create_weekly_demand(planningHorizon, weekDays)
 requests = create_request(planningHorizon, nurses, shiftTypes, weekDays)
 forbidden_shift_succession = create_forbidden_succession(scenarioDict)
@@ -281,16 +335,23 @@ for s in range(1, len(shiftTypes) + 1):
         obj_int_vars.append(insufficient)
         obj_int_coeffs.append(30)
 
-# S2: Consecutive Assignment 1/2
-#TODO: Implement consecutive working days between different shifttype (e.g. EEELLL)
+# S2: Consecutive shift assignment 1/2
 for ct in shift_sequence_constraints:
     shift, hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = ct
     for n in all_nurses:
         works = [shifts[n, d, shift] for d in all_days]
         variables, coeffs = add_soft_sequence_constraint(
-            model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'shift_constraint(employee %i, shift %i)' % (n, shift))
+            model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
+
+# S2: Consecutive work assignment 2/2
+for n in all_nurses:
+    works = [shifts[n, d, 0].Not() for d in all_days]
+    variables, coeffs = add_soft_sequence_constraint(
+        model, works, 1, 3, 30, 5, len(all_days), 30, 'cons_work_constraint(employee %i, day %i)' % (n, d))
+    obj_bool_vars.extend(variables)
+    obj_bool_coeffs.extend(coeffs)
 
 # S3: Consecutive Days Off
 for c in range(len(contracts)):
@@ -313,24 +374,43 @@ for n, s, d, w in requests:
     obj_bool_coeffs.append(w)
 
 # S5: Complete weekends
-#TODO: Check why same shifts on weekends are alwasys choosen
+#TODO: Check why same shifts on weekends are alwasys choosen (Idea: use implications)
 for n in all_nurses:
     for w in range(len(planningHorizon)):
         for d in range(len(weekDays)):
             if (nurses[n].contract.completeWeekends == 1 and weekDays[d] == "Saturday"):
-                sun_weekends = [shifts[n, d + (w * len(weekDays)), 0], shifts[n, d + (w * len(weekDays)) + 1, 0].Not()]
                 sat_weekends = [shifts[n, d + (w * len(weekDays)), 0].Not(), shifts[n, d + (w * len(weekDays)) + 1, 0]]
-                sun_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
                 sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
-                sun_weekends.append(sun_week_var)
                 sat_weekends.append(sat_week_var)
-                model.AddBoolXOr(sun_weekends)
-                model.AddBoolXOr(sat_weekends)
-                obj_bool_vars.append(sun_week_var)
-                obj_bool_coeffs.append(30)
+                model.AddExactlyOne(sat_weekends)
                 obj_bool_vars.append(sat_week_var)
                 obj_bool_coeffs.append(30)
 
+# S6: Total assignments
+for c in range(len(contracts)):
+    cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
+    for n in range(len(cn)):
+        print(nurses[cn[n]].contract.minimumNumberOfAssignments)
+        works = [shifts[cn[n], d, 0].Not() for d in all_days]
+        variables, coeffs = add_soft_sum_constraint(
+            model, works, 1, nurses[cn[n]].contract.minimumNumberOfAssignments, 20,
+            nurses[cn[n]].contract.maximumNumberOfAssignments, len(all_days), 20, 'total_assignments(employee %s, contract %s)' % (nurses[cn[n]].id, nurses[cn[n]].contract.id))
+        obj_bool_vars.extend(variables)
+        obj_bool_coeffs.extend(coeffs)
+
+# S7: Total working weekends
+#TODO: Only works with the wrong implementation of S5
+for c in range(len(contracts)):
+    cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
+    for n in range(len(cn)):
+        for d in range(len(weekDays)):
+            if weekDays[d] == "Saturday":
+                works = [shifts[cn[n], d +(w * len(weekDays)), 0] for w in range(len(planningHorizon))]
+                variables, coeffs = add_soft_sum_constraint(
+                    model, works, 1, 2, 30,
+                    2, 4, 30, 'total_working_weekends(employee %s)' % (nurses[cn[n]].id))
+                obj_bool_vars.extend(variables)
+                obj_bool_coeffs.extend(coeffs)
 
 model.Minimize(
     sum(obj_bool_vars[i] * obj_bool_coeffs[i]
