@@ -21,9 +21,9 @@ from google.protobuf import text_format
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('output_proto', '',
+flags.DEFINE_string('output_proto', 'test',
                     'Output file to write the cp_model proto to.')
-flags.DEFINE_string('params', 'max_time_in_seconds:10.0',
+flags.DEFINE_string('params', 'max_time_in_seconds:1.0',
                     'Sat solver parameters.')
 
 
@@ -179,7 +179,7 @@ def solve_shift_scheduling(params, output_proto):
     """Solves the shift scheduling problem."""
     # Data
     num_employees = 8
-    num_weeks = 3
+    num_weeks = 4
     shifts = ['O', 'M', 'A', 'N']
 
     # Fixed assignment: (employee, shift, day).

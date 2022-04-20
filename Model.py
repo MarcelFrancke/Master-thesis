@@ -1,6 +1,9 @@
+import copy
+import itertools
 import json
 
 import params as params
+from numpy.random import random
 
 from elements.Contract import Contract
 from elements.Nurse import Nurse
@@ -24,6 +27,8 @@ def solve_shift_scheduling(params, proto):
     shiftTypes = []
     shiftRepr = ['-', 'E', 'L', 'N']
     weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    weekDaysSol = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    shiftReprSol = ['Off', 'Early', 'Late', 'Night']
     model = cp_model.CpModel()
 
     with open('resources/datasets/n005w4/Sc-n005w4.json') as file:
@@ -33,10 +38,10 @@ def solve_shift_scheduling(params, proto):
     with open('resources/datasets/n005w4/WD-n005w4-1.json') as file:
         weekDict = json.load(file)
 
-    def create_weeks(lenght):
+    def create_weeks(list):
         planningHorizon = []
-        for i in range(lenght):
-            with open('resources/datasets/n005w4/WD-n005w4-' + str(i) + '.json') as file:
+        for i in range(len(list)):
+            with open('resources/datasets/n005w4/WD-n005w4-' + str(list[i]) + '.json') as file:
                 planningHorizon.append(json.load(file))
         return planningHorizon
 
@@ -56,7 +61,8 @@ def solve_shift_scheduling(params, proto):
             setattr(i, "contract", contracts[1])
 
     skills = scenarioDict['skills']
-    planningHorizon = create_weeks(4)
+    skill_perms = [p for p in itertools.product(skills, repeat=len(skills))]
+    planningHorizon = create_weeks([5, 3, 1, 0])
     all_nurses = range(len(nurses))
     all_working_shifts = range(len(shiftTypes))
     all_shifts = range(len(shiftTypes) + 1)
@@ -94,6 +100,7 @@ def solve_shift_scheduling(params, proto):
     def create_weekly_demand(wData, wDays):
         nurse_demand = []
         headnurse_demand = []
+        min_demand = []
         opt_demand = []
 
         for w in range(len(wData)):
@@ -142,9 +149,10 @@ def solve_shift_scheduling(params, proto):
                             pass
                 headnurse_demand.append((head_early, head_late, head_night))
                 nurse_demand.append((nurse_early, nurse_late, nurse_night))
+                min_demand.append((head_early + nurse_early, head_late + nurse_late, head_night + nurse_night))
                 opt_demand.append((opt_head_early + opt_nurse_early, opt_head_late + opt_nurse_late, opt_head_night + opt_nurse_night))
 
-        return headnurse_demand, nurse_demand, opt_demand
+        return headnurse_demand, nurse_demand, min_demand, opt_demand
 
     def find_indices(lst, condition):
         return [i for i, elem in enumerate(lst) if condition(elem)]
@@ -315,104 +323,127 @@ def solve_shift_scheduling(params, proto):
     for n in all_nurses:
         for d in all_days:
             for s in all_shifts:
-                shifts[(n, d, s)] = model.NewBoolVar('shift_n%id%is%i' % (n, d, s))
+                for f in range(len(nurses[n].skills)):
+                    shifts[(n, d, s, nurses[n].skills[f])] = model.NewBoolVar('shift_n%id%is%if%s' % (n, d, s, nurses[n].skills[f]))
 
-    # H1: Exactly one shift per day.
+
+    # H1: Exactly one shift and one skill per day.
     for n in all_nurses:
         for d in all_days:
-            model.AddExactlyOne((shifts[n, d, s] for s in all_shifts))
+            model.AddExactlyOne((shifts[n, d, s, nurses[n].skills[f]] for s in all_shifts for f in range(len(nurses[n].skills))))
 
     # H3: Forbidden shift successions
     for previous_shift, next_shift, cost in forbidden_shift_succession:
         for n in all_nurses:
             for d in range((len(all_days) - 1)):
-                transition = [shifts[n, d, previous_shift].Not(), shifts[n, d + 1, next_shift].Not()]
-                model.AddBoolOr(transition)
+                if len(nurses[n].skills) == 1:
+                    transition = [shifts[n, d, previous_shift, nurses[n].skills[0]].Not(),
+                                  shifts[n, d + 1, next_shift, nurses[n].skills[0]].Not()]
+                    model.AddBoolOr(transition)
+                else:
+                    for f in range(len(skill_perms)):
+                        transition = [shifts[n, d, previous_shift, skill_perms[f][0]].Not(), shifts[n, d + 1, next_shift, skill_perms[f][1]].Not()]
+                        model.AddBoolOr(transition)
+
 
     # H2 H4 S1: Each shift is assigned to opt or min requirements of nurses depending on their skills.
     for s in range(1, len(shiftTypes) + 1):
         for d in all_days:
             for f in range(len(skills)):
-                works = [shifts[n, d, s] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
+                works = [shifts[n, d, s, skills[f]] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
                 min_demand = weekly_demand[f][d][s - 1]
                 worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
                 model.Add(worked == sum(works))
             name = 'not optimal demand (shift=%i, day=%i)' % (s, d)
-            insufficient = model.NewIntVar(0, len(nurses) - weekly_demand[2][d][s - 1], name)
-            model.Add(insufficient == weekly_demand[2][d][s - 1] - worked)
+            insufficient = model.NewIntVar(0, len(nurses) - weekly_demand[3][d][s - 1], name)
+            model.Add(insufficient == weekly_demand[3][d][s - 1] - worked)
             obj_int_vars.append(insufficient)
             obj_int_coeffs.append(30)
 
-    # S2: Consecutive shift assignment 1/2
+    # # S2: Consecutive shift assignment 1/2
     for ct in shift_sequence_constraints:
         shift, hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = ct
         for n in all_nurses:
-            works = [shifts[n, d, shift] for d in all_days]
-            variables, coeffs = add_soft_sequence_constraint(
-                model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
-            obj_bool_vars.extend(variables)
-            obj_bool_coeffs.extend(coeffs)
-
-    # S2: Consecutive work assignment 2/2
+            for f in range(len(nurses[n].skills)):
+                works = [shifts[n, d, shift, nurses[n].skills[f]] for d in all_days]
+                variables, coeffs = add_soft_sequence_constraint(
+                    model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
+                obj_bool_vars.extend(variables)
+                obj_bool_coeffs.extend(coeffs)
+    #
+    # # S2: Consecutive work assignment 2/2
     for n in all_nurses:
-        works = [shifts[n, d, 0].Not() for d in all_days]
+        works = [shifts[n, d, 0, nurses[n].skills[f]].Not() for d in all_days]
         variables, coeffs = add_soft_sequence_constraint(
             model, works, 1, 3, 30, 5, len(all_days), 30, 'cons_work_constraint(employee %i, day %i)' % (n, d))
         obj_bool_vars.extend(variables)
         obj_bool_coeffs.extend(coeffs)
 
-    # S3: Consecutive Days Off
+    # # S3: Consecutive Days Off
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
-            hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = day_off_sequence_constraints[c]
-            works = [shifts[cn[n], d, 0] for d in all_days]
-            variables, coeffs = add_soft_sequence_constraint(
-                model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'day_off_sequence_constraint(employee %i, shift %i)' % (n, shift))
-            obj_bool_vars.extend(variables)
-            obj_bool_coeffs.extend(coeffs)
-
-    # S4: Preferences
+            for f in range(len(nurses[cn[n]].skills)):
+                hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = day_off_sequence_constraints[c]
+                works = [shifts[cn[n], d, 0, nurses[cn[n]].skills[f]] for d in all_days]
+                variables, coeffs = add_soft_sequence_constraint(
+                    model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'day_off_sequence_constraint(employee %i, shift %i)' % (n, shift))
+                obj_bool_vars.extend(variables)
+                obj_bool_coeffs.extend(coeffs)
+    #
+    # # S4: Preferences
     for n, s, d, w in requests:
-        preference = [shifts[n, d, s]]
+        preference = [shifts[n, d, s, nurses[n].skills[f]] for f in range(len(nurses[n].skills))]
         pref_var = model.NewBoolVar('preference (employee=%i, day=%i, shift=%i)' % (n, d, s))
         preference.append(pref_var)
         model.AddBoolOr(preference)
         obj_bool_vars.append(pref_var)
         obj_bool_coeffs.append(w)
-
-    # S5: Complete weekends
-    #TODO: Check why same shifts on weekends are alwasys choosen (Idea: use implications)
+    #
+    # # S5: Complete weekends
+    # #TODO: Check why same shifts on weekends are alwasys choosen (Idea: use implications)
     for n in all_nurses:
         for w in range(len(planningHorizon)):
             for d in range(len(weekDays)):
                 if (nurses[n].contract.completeWeekends == 1 and weekDays[d] == "Saturday"):
-                    sat_weekends = [shifts[n, d + (w * len(weekDays)), 0].Not(), shifts[n, d + (w * len(weekDays)) + 1, 0]]
-                    sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
-                    sat_weekends.append(sat_week_var)
-                    model.AddExactlyOne(sat_weekends)
-                    obj_bool_vars.append(sat_week_var)
-                    obj_bool_coeffs.append(30)
-
-    # S6: Total assignments
+                    if len(nurses[n].skills) == 1:
+                        sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]].Not(),
+                                        shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]]]
+                        sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
+                        sat_weekends.append(sat_week_var)
+                        model.AddExactlyOne(sat_weekends)
+                        obj_bool_vars.append(sat_week_var)
+                        obj_bool_coeffs.append(30)
+                    else:
+                        for f in range(len(skill_perms)):
+                            sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, skill_perms[f][0]].Not(),
+                                            shifts[n, d + (w * len(weekDays)) + 1, 0, skill_perms[f][1]]]
+                            sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
+                            sat_weekends.append(sat_week_var)
+                            model.AddExactlyOne(sat_weekends)
+                            obj_bool_vars.append(sat_week_var)
+                            obj_bool_coeffs.append(30)
+    #
+    # # S6: Total assignments
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
-            works = [shifts[cn[n], d, 0].Not() for d in all_days]
-            variables, coeffs = add_soft_sum_constraint(
-                model, works, 1, nurses[cn[n]].contract.minimumNumberOfAssignments, 20,
-                nurses[cn[n]].contract.maximumNumberOfAssignments, len(all_days), 20, 'total_assignments(employee %s, contract %s)' % (nurses[cn[n]].id, nurses[cn[n]].contract.id))
-            obj_bool_vars.extend(variables)
-            obj_bool_coeffs.extend(coeffs)
-
-    # S7: Total working weekends
-    #TODO: Only works with the wrong implementation of S5
+            for f in range(len(nurses[cn[n]].skills)):
+                works = [shifts[cn[n], d, 0, nurses[cn[n]].skills[f]].Not() for d in all_days]
+                variables, coeffs = add_soft_sum_constraint(
+                    model, works, 1, nurses[cn[n]].contract.minimumNumberOfAssignments, 20,
+                    nurses[cn[n]].contract.maximumNumberOfAssignments, len(all_days), 20, 'total_assignments(employee %s, contract %s)' % (nurses[cn[n]].id, nurses[cn[n]].contract.id))
+                obj_bool_vars.extend(variables)
+                obj_bool_coeffs.extend(coeffs)
+    #
+    # # S7: Total working weekends
+    # #TODO: Only works with the wrong implementation of S5
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
             for d in range(len(weekDays)):
                 if weekDays[d] == "Saturday":
-                    works = [shifts[cn[n], d +(w * len(weekDays)), 0] for w in range(len(planningHorizon))]
+                    works = [shifts[cn[n], d +(w * len(weekDays)), 0, nurses[cn[n]].skills[f]] for w in range(len(planningHorizon)) for f in range(len(nurses[cn[n]].skills))]
                     variables, coeffs = add_soft_sum_constraint(
                         model, works, 1, 2, 30,
                         2, 4, 30, 'total_working_weekends(employee %s)' % (nurses[cn[n]].id))
@@ -435,10 +466,40 @@ def solve_shift_scheduling(params, proto):
     if params:
         text_format.Parse(params, solver.parameters)
     solution_printer = cp_model.ObjectiveSolutionPrinter()
-    solver.parameters.num_search_workers = 8
+    solver.parameters.num_search_workers = 30
     status = solver.Solve(model, solution_printer)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
+        print()
+        header = '          '
+        dicts = []
+        for w in range(len(planningHorizon)):
+            dicts.append({
+                "scenario": "n005w4",
+                "week": w,
+                "assignments": [],
+            })
+            for n in all_nurses:
+                for d in range(len(weekDays)):
+                    for s in range(1, len(shiftTypes) + 1):
+                        for f in range(len(nurses[n].skills)):
+                            if solver.BooleanValue(shifts[n, d +(w * len(weekDays)) , s, nurses[n].skills[f]]):
+                                dicts[w]["assignments"].append({
+                                    "nurse": nurses[n].id,
+                                    "day": weekDaysSol[d],
+                                    "shiftType": shiftReprSol[s],
+                                    "skill": nurses[n].skills[f]
+                                    }
+                                )
+        # Serializing json
+        for w in range(len(planningHorizon)):
+            json_object = json.dumps(dicts[w], indent=4)
+
+            # Writing to sample.json
+            with open("resources/datasets/Solutions/Sol-n005w4-" + str(w) + ".json", "w") as outfile:
+                outfile.write(json_object)
+        print(dicts)
+
         print()
         header = '          '
         for w in range(len(planningHorizon)):
@@ -448,9 +509,24 @@ def solve_shift_scheduling(params, proto):
             schedule = ''
             for d in all_days:
                 for s in all_shifts:
-                    if solver.BooleanValue(shifts[n, d, s]):
-                        schedule += shiftRepr[s] + ' '
+                    for f in range(len(nurses[n].skills)):
+                        if solver.BooleanValue(shifts[n, d, s, nurses[n].skills[f]]):
+                            schedule += shiftRepr[s] + ' '
             print(' nurse %i: %s' % (n, schedule))
+
+        print()
+        header = '          '
+        for w in range(len(planningHorizon)):
+            header += 'M T W T F S S '
+        print(header)
+        for n in all_nurses:
+            skill_schedule = ''
+            for d in all_days:
+                for s in all_shifts:
+                    for f in range(len(nurses[n].skills)):
+                        if solver.BooleanValue(shifts[n, d, s, nurses[n].skills[f]]):
+                            skill_schedule += str(skills.index(nurses[n].skills[f])) + ' '
+            print(' nurse %i: %s' % (n, skill_schedule))
 
         print('Penalties:')
         for i, var in enumerate(obj_bool_vars):
@@ -458,8 +534,6 @@ def solve_shift_scheduling(params, proto):
                 penalty = obj_bool_coeffs[i]
                 if penalty > 0:
                     print('  %s violated, penalty=%i' % (var.Name(), penalty))
-                else:
-                    print('  %s fulfilled, gain=%i' % (var.Name(), -penalty))
 
         for i, var in enumerate(obj_int_vars):
             if solver.Value(var) > 0:
@@ -482,6 +556,3 @@ def main(_):
 if __name__ == '__main__':
     app.run(main)
 
-#df = pd.DataFrame(scenarioDict['nurses'])
-#pd.set_option("max_colwidth", 40)
-#print(df)
