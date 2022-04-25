@@ -1,0 +1,33 @@
+        |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S|
+-------------------------------------------------------------------------
+Patrick |N|N|N|N|-|E|E| |E|L|L|-|-|-|N| |N|N|N|-|E|E|E| |E|E|-|L|L|L|L|
+Andrea  |E|E|E|-|L|N|N| |N|N|-|E|L|L|L| |-|-|L|L|L|L|L| |-|-|E|E|-|-|E|
+Stefaan |N|N|N|N|N|N|N| |-|N|N|N|N|-|E| |E|E|-|-|-|N|N| |N|N|-|-|-|N|N|
+Sara    |E|E|E|L|L|-|-| |-|E|E|E|E|-|-| |-|E|E|E|E|-|-| |-|-|N|N|N|N|N|
+Nguyen  |L|L|L|-|E|E|L| |-|L|L|N|N|-|-| |L|L|L|N|N|-|-| |L|L|L|-|E|E|E|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 0
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 320
+Consecutive constraints: 570
+Non working days constraints: 360
+Preferences: 50
+Max working weekend: 180
+Complete weekends: 90
+Optimal coverage constraints: 660
+
+------------------------
+
+Total cost: 2230
+Total cost Model: 3305

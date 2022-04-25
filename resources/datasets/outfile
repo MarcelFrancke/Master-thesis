@@ -1,0 +1,32 @@
+        |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S|
+-------------------------------------------------------------------------
+Patrick |N|-|-|N|-|E|L| |-|N|N|N|N|-|L| |L|L|L|L|L|N|-| |E|L|L|L|-|E|L|
+Andrea  |E|E|L|-|L|-|E| |E|L|L|-|L|-|N| |-|E|L|-|E|E|N| |N|-|N|-|L|-|E|
+Stefaan |E|L|-|-|L|N|N| |-|N|-|E|E|-|-| |E|N|N|-|E|L|L| |L|N|-|-|E|N|N|
+Sara    |-|E|E|-|N|N|N| |-|L|L|-|N|-|E| |-|E|E|-|N|-|E| |-|E|E|-|N|N|-|
+Nguyen  |N|N|N|-|E|E|-| |-|E|E|E|-|L|-| |-|-|-|-|-|-|-| |-|-|-|-|-|-|L|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 19
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 380
+Consecutive constraints: 1995
+Non working days constraints: 1680
+Preferences: 40
+Max working weekend: 240
+Complete weekends: 330
+Optimal coverage constraints: 930
+
+------------------------
+
+Total cost: 5595
