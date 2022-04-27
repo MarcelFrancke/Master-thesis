@@ -11,6 +11,8 @@ from elements.Shift import Shift
 from ortools.sat.python import cp_model
 from absl import flags, app
 from google.protobuf import text_format
+import itertools
+
 
 #n030w4_1_6-2-9-1
 FLAGS = flags.FLAGS
@@ -18,7 +20,7 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('output_proto', '',
                     'Output file to write the cp_model proto to.')
 #Runntime formel w×(60+6×n)
-flags.DEFINE_string('params', 'max_time_in_seconds:1056',
+flags.DEFINE_string('params', 'max_time_in_seconds:6000',
                     'Sat solver parameters.')
 
 def solve_shift_scheduling(params, proto):
@@ -31,7 +33,7 @@ def solve_shift_scheduling(params, proto):
     shiftReprSol = ['Off', 'Early', 'Day', 'Late', 'Night']
     model = cp_model.CpModel()
 
-    with open('resources/datasets/n012w8/Sc-n012w8.json') as file:
+    with open('resources/datasets/n021w4/Sc-n021w4.json') as file:
         scenarioDict = json.load(file)
     # with open('resources/datasets/n005w4/H0-n005w4-0.json') as file:
     #     historyDict = json.load(file)
@@ -41,7 +43,7 @@ def solve_shift_scheduling(params, proto):
     def create_weeks(list):
         planningHorizon = []
         for i in range(len(list)):
-            with open('resources/datasets/n012w8/WD-n012w8-' + str(list[i]) + '.json') as file:
+            with open('resources/datasets/n021w4/WD-n021w4-' + str(list[i]) + '.json') as file:
                 planningHorizon.append(json.load(file))
         return planningHorizon
 
@@ -61,16 +63,15 @@ def solve_shift_scheduling(params, proto):
             setattr(i, "contract", contracts[1])
 
     skills = scenarioDict['skills']
-    skill_perms = [p for p in itertools.product(skills, repeat=len(skills))]
-    planningHorizon = create_weeks([0, 1, 2, 3, 4, 5, 6, 7])
+    planningHorizon = create_weeks([0, 1, 2, 3])
     all_nurses = range(len(nurses))
     all_working_shifts = range(len(shiftTypes))
     all_shifts = range(len(shiftTypes) + 1)
     all_days = range(len(weekDays) * len(planningHorizon))
     all_skills = range(len(skills))
 
-    shift_sequence_constraints = [(1, 2, 2, 15, 5, 5, 15), (1, 2, 2, 15, 56, 56, 15), (2, 2, 2, 15, 3, 3, 15), (3, 4, 4, 15, 5, 5, 15)]
-    day_off_sequence_constraints = [(2, 2, 30, 3, 3, 30), (3, 3, 30, 5, 5, 30)]
+    shift_sequence_constraints = [(1, 2, 2, 15, 5, 5, 15), (1, 2, 2, 15, 28, 28, 15), (2, 2, 2, 15, 5, 5, 15), (3, 4, 4, 15, 5, 5, 15)]
+    day_off_sequence_constraints = [(2, 2, 30, 3, 3, 30), (2, 2, 30, 5, 5, 30), (3, 3, 30, 5, 5, 30)]
     working_sequence_constraints = [(3, 3, 30, 5, 5, 30), (3, 3, 30, 5, 5, 30)]
 
 
@@ -99,71 +100,26 @@ def solve_shift_scheduling(params, proto):
         return forbidden_array_int
 
     def create_weekly_demand(wData, wDays):
-        nurse_demand = []
-        headnurse_demand = []
         min_demand = []
         opt_demand = []
 
-        for w in range(len(wData)):
-            for i in range(len(wDays)):
-                head_early = 0
-                head_day = 0
-                head_late = 0
-                head_night = 0
-
-                nurse_early = 0
-                nurse_day = 0
-                nurse_late = 0
-                nurse_night = 0
-
-                opt_head_early = 0
-                opt_head_day = 0
-                opt_head_late = 0
-                opt_head_night = 0
-
-                opt_nurse_early = 0
-                opt_nurse_day = 0
-                opt_nurse_late = 0
-                opt_nurse_night = 0
-                for j in range(len(wData[w]['requirements'])):
-                    if wData[w]['requirements'][j]['skill'] == 'HeadNurse':
-                        req = wData[w]['requirements'][j]['requirementOn'+ wDays[i]]
-                        if wData[w]['requirements'][j]['shiftType'] == 'Early':
-                            head_early += req['minimum']
-                            opt_head_early += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Day':
-                            head_day += req['minimum']
-                            opt_head_day += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Late':
-                            head_late += req['minimum']
-                            opt_head_late += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Night':
-                            head_night += req['minimum']
-                            opt_head_night += req['optimal']
-                        else:
-                            pass
-                    else:
-                        req = wData[w]['requirements'][j]['requirementOn'+ wDays[i]]
-                        if wData[w]['requirements'][j]['shiftType'] == 'Early':
-                            nurse_early += req['minimum']
-                            opt_nurse_early += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Day':
-                            nurse_day += req['minimum']
-                            opt_nurse_day += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Late':
-                            nurse_late += req['minimum']
-                            opt_nurse_late += req['optimal']
-                        elif wData[w]['requirements'][j]['shiftType'] == 'Night':
-                            nurse_night += req['minimum']
-                            opt_nurse_night += req['optimal']
-                        else:
-                            pass
-                headnurse_demand.append((head_early, head_day, head_late, head_night))
-                nurse_demand.append((nurse_early, nurse_day, nurse_late, nurse_night))
-                min_demand.append((head_early + nurse_early, head_day + nurse_day, head_late + nurse_late, head_night + nurse_night))
-                opt_demand.append((opt_head_early + opt_nurse_early, opt_head_day + opt_nurse_day, opt_head_late + opt_nurse_late, opt_head_night + opt_nurse_night))
-
-        return headnurse_demand, nurse_demand, min_demand, opt_demand
+        for k in all_skills:
+            min_test1 = []
+            opt_test1 = []
+            for w in range(len(wData)):
+                for i in range(len(wDays)):
+                    min_test = [0] * len(shiftTypes)
+                    opt_test = [0] * len(shiftTypes)
+                    for j in range(len(wData[w]['requirements'])):
+                        for s in all_working_shifts:
+                            if wData[w]['requirements'][j]['skill'] == skills[k] and wData[w]['requirements'][j]['shiftType'] == shiftTypes[s].id:
+                                min_test[s] += wData[w]['requirements'][j]['requirementOn'+ wDays[i]]['minimum']
+                                opt_test[s] += wData[w]['requirements'][j]['requirementOn'+ wDays[i]]['optimal']
+                    min_test1.append(min_test)
+                    opt_test1.append(opt_test)
+            min_demand.append(min_test1)
+            opt_demand.append(opt_test1)
+        return min_demand, opt_demand
 
     def find_indices(lst, condition):
         return [i for i, elem in enumerate(lst) if condition(elem)]
@@ -302,7 +258,7 @@ def solve_shift_scheduling(params, proto):
         # Penalize sums below the soft_min target.
         if soft_min > hard_min and min_cost > 0:
             delta = model.NewIntVar(-len(works), len(works), '')
-            model.Add(delta == soft_min - sum_var)
+            model.Add(delta >= soft_min - sum_var)
             # TODO(user): Compare efficiency with only excess >= soft_min - sum_var.
             excess = model.NewIntVar(0, hard_max, prefix + ': under_sum')
             model.AddMaxEquality(excess, [delta, 0])
@@ -355,8 +311,11 @@ def solve_shift_scheduling(params, proto):
                                   shifts[n, d + 1, next_shift, nurses[n].skills[0]].Not()]
                     model.AddBoolOr(transition)
                 else:
-                    for f in range(len(skill_perms)):
-                        transition = [shifts[n, d, previous_shift, skill_perms[f][0]].Not(), shifts[n, d + 1, next_shift, skill_perms[f][1]].Not()]
+                    temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
+                    for i in enumerate(temp_perm):
+                        print(i)
+                    for f in range(len(temp_perm)):
+                        transition = [shifts[n, d, previous_shift, temp_perm[f][0]].Not(), shifts[n, d + 1, next_shift, temp_perm[f][1]].Not()]
                         model.AddBoolOr(transition)
 
 
@@ -365,14 +324,14 @@ def solve_shift_scheduling(params, proto):
         for d in all_days:
             for f in range(len(skills)):
                 works = [shifts[n, d, s, skills[f]] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
-                min_demand = weekly_demand[f][d][s - 1]
+                min_demand = weekly_demand[0][f][d][s - 1]
                 worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
-                model.Add(worked == sum(works))
-            name = 'not optimal demand (shift=%i, day=%i)' % (s, d)
-            insufficient = model.NewIntVar(0, len(nurses) - weekly_demand[3][d][s - 1], name)
-            model.Add(insufficient == weekly_demand[3][d][s - 1] - worked)
-            obj_int_vars.append(insufficient)
-            obj_int_coeffs.append(30)
+                model.Add(worked >= sum(works))
+                name = 'not optimal demand (shift=%i, day=%i)' % (s, d)
+                # insufficient = model.NewIntVar(0, len(find_indices(nurses, lambda n: skills[f] in n.skills)) - weekly_demand[1][f][d][s - 1], name)
+                # model.Add(insufficient <= weekly_demand[1][f][d][s - 1] - worked)
+                # obj_int_vars.append(insufficient)
+                # obj_int_coeffs.append(30)
 
     # # S2: Consecutive shift assignment 1/2
     for ct in shift_sequence_constraints:
@@ -387,11 +346,12 @@ def solve_shift_scheduling(params, proto):
     #
     # # S2: Consecutive work assignment 2/2
     for n in all_nurses:
-        works = [shifts[n, d, 0, nurses[n].skills[f]].Not() for d in all_days]
-        variables, coeffs = add_soft_sequence_constraint(
-            model, works, 1, 3, 30, 5, len(all_days), 30, 'cons_work_constraint(employee %i)' % (n))
-        obj_bool_vars.extend(variables)
-        obj_bool_coeffs.extend(coeffs)
+        for f in range(len(nurses[n].skills)):
+            works = [shifts[n, d, 0, nurses[n].skills[f]].Not() for d in all_days]
+            variables, coeffs = add_soft_sequence_constraint(
+                model, works, 1, 3, 30, 5, len(all_days), 30, 'cons_work_constraint(employee %i)' % (n))
+            obj_bool_vars.extend(variables)
+            obj_bool_coeffs.extend(coeffs)
 
     # # S3: Consecutive Days Off
     for c in range(len(contracts)):
@@ -429,9 +389,10 @@ def solve_shift_scheduling(params, proto):
                         obj_bool_vars.append(sat_week_var)
                         obj_bool_coeffs.append(30)
                     else:
-                        for f in range(len(skill_perms)):
-                            sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, skill_perms[f][0]].Not(),
-                                            shifts[n, d + (w * len(weekDays)) + 1, 0, skill_perms[f][1]]]
+                        temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
+                        for f in range(len(temp_perm)):
+                            sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, temp_perm[f][0]].Not(),
+                                            shifts[n, d + (w * len(weekDays)) + 1, 0, temp_perm[f][1]]]
                             sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
                             sat_weekends.append(sat_week_var)
                             model.AddExactlyOne(sat_weekends)

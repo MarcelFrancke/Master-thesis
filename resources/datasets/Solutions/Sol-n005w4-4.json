@@ -4,18 +4,6 @@
     "assignments": [
         {
             "nurse": "Alice",
-            "day": "Mon",
-            "shiftType": "Night",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "Alice",
-            "day": "Wed",
-            "shiftType": "Day",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Alice",
             "day": "Sat",
             "shiftType": "Night",
             "skill": "HeadNurse"
@@ -28,110 +16,80 @@
         },
         {
             "nurse": "Bob",
-            "day": "Tue",
-            "shiftType": "Day",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "Bob",
-            "day": "Thu",
-            "shiftType": "Day",
+            "day": "Mon",
+            "shiftType": "Late",
             "skill": "Nurse"
         },
         {
             "nurse": "Bob",
-            "day": "Fri",
-            "shiftType": "Night",
+            "day": "Tue",
+            "shiftType": "Late",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "Bob",
+            "day": "Sat",
+            "shiftType": "Day",
             "skill": "HeadNurse"
         },
         {
             "nurse": "Bob",
+            "day": "Sun",
+            "shiftType": "Day",
+            "skill": "HeadNurse"
+        },
+        {
+            "nurse": "John",
+            "day": "Mon",
+            "shiftType": "Night",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "John",
+            "day": "Thu",
+            "shiftType": "Night",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "John",
+            "day": "Fri",
+            "shiftType": "Night",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "John",
             "day": "Sat",
             "shiftType": "Night",
             "skill": "Nurse"
         },
         {
-            "nurse": "Bob",
+            "nurse": "John",
             "day": "Sun",
             "shiftType": "Night",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "John",
-            "day": "Mon",
-            "shiftType": "Early",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "John",
-            "day": "Tue",
-            "shiftType": "Early",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "John",
-            "day": "Wed",
-            "shiftType": "Late",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "John",
-            "day": "Thu",
-            "shiftType": "Late",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "John",
-            "day": "Fri",
-            "shiftType": "Late",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Kate",
-            "day": "Mon",
-            "shiftType": "Late",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "Kate",
-            "day": "Tue",
-            "shiftType": "Late",
             "skill": "Nurse"
         },
         {
             "nurse": "Kate",
             "day": "Sat",
-            "shiftType": "Day",
-            "skill": "Nurse"
+            "shiftType": "Night",
+            "skill": "HeadNurse"
         },
         {
             "nurse": "Kate",
             "day": "Sun",
-            "shiftType": "Late",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "Mary",
-            "day": "Mon",
-            "shiftType": "Late",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Mary",
-            "day": "Tue",
-            "shiftType": "Late",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Mary",
             "day": "Wed",
-            "shiftType": "Late",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Mary",
             "day": "Thu",
-            "shiftType": "Late",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
@@ -142,128 +100,86 @@
         },
         {
             "nurse": "Mary",
+            "day": "Sat",
+            "shiftType": "Night",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "Mary",
             "day": "Sun",
-            "shiftType": "Early",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Paul",
-            "day": "Mon",
-            "shiftType": "Early",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Paul",
-            "day": "Tue",
-            "shiftType": "Day",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Paul",
-            "day": "Wed",
-            "shiftType": "Early",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Paul",
-            "day": "Thu",
-            "shiftType": "Early",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Paul",
             "day": "Fri",
-            "shiftType": "Day",
+            "shiftType": "Night",
+            "skill": "Nurse"
+        },
+        {
+            "nurse": "Paul",
+            "day": "Sat",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Paul",
             "day": "Sun",
-            "shiftType": "Day",
+            "shiftType": "Night",
             "skill": "Nurse"
-        },
-        {
-            "nurse": "Arthur",
-            "day": "Mon",
-            "shiftType": "Early",
-            "skill": "HeadNurse"
-        },
-        {
-            "nurse": "Arthur",
-            "day": "Wed",
-            "shiftType": "Late",
-            "skill": "HeadNurse"
         },
         {
             "nurse": "Arthur",
             "day": "Fri",
             "shiftType": "Early",
-            "skill": "Nurse"
+            "skill": "HeadNurse"
         },
         {
             "nurse": "Arthur",
             "day": "Sat",
             "shiftType": "Early",
-            "skill": "Nurse"
+            "skill": "HeadNurse"
         },
         {
             "nurse": "Arthur",
             "day": "Sun",
-            "shiftType": "Day",
+            "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Pier",
             "day": "Sat",
-            "shiftType": "Late",
+            "shiftType": "Early",
             "skill": "Nurse"
         },
         {
             "nurse": "Pier",
             "day": "Sun",
-            "shiftType": "Late",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Lucy",
-            "day": "Wed",
-            "shiftType": "Day",
+            "shiftType": "Early",
             "skill": "Nurse"
         },
         {
             "nurse": "Lucy",
             "day": "Thu",
-            "shiftType": "Day",
+            "shiftType": "Early",
             "skill": "Nurse"
         },
         {
             "nurse": "Lucy",
             "day": "Fri",
-            "shiftType": "Day",
+            "shiftType": "Early",
             "skill": "Nurse"
-        },
-        {
-            "nurse": "Maggie",
-            "day": "Mon",
-            "shiftType": "Night",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Maggie",
-            "day": "Tue",
-            "shiftType": "Night",
-            "skill": "HeadNurse"
         },
         {
             "nurse": "Maggie",
             "day": "Wed",
             "shiftType": "Night",
-            "skill": "HeadNurse"
+            "skill": "Nurse"
         },
         {
             "nurse": "Maggie",
-            "day": "Fri",
-            "shiftType": "Day",
+            "day": "Sat",
+            "shiftType": "Early",
             "skill": "HeadNurse"
         },
         {
@@ -275,66 +191,42 @@
         {
             "nurse": "Patrick",
             "day": "Mon",
-            "shiftType": "Night",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Patrick",
-            "day": "Tue",
-            "shiftType": "Night",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Patrick",
-            "day": "Thu",
-            "shiftType": "Day",
+            "shiftType": "Early",
             "skill": "HeadNurse"
         },
         {
             "nurse": "Patrick",
-            "day": "Fri",
+            "day": "Tue",
             "shiftType": "Early",
             "skill": "HeadNurse"
         },
         {
             "nurse": "Patrick",
             "day": "Sat",
-            "shiftType": "Day",
+            "shiftType": "Early",
             "skill": "HeadNurse"
         },
         {
             "nurse": "Patrick",
             "day": "Sun",
-            "shiftType": "Night",
+            "shiftType": "Early",
             "skill": "HeadNurse"
         },
         {
             "nurse": "Jane",
             "day": "Mon",
-            "shiftType": "Day",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Jane",
-            "day": "Tue",
-            "shiftType": "Day",
-            "skill": "Nurse"
-        },
-        {
-            "nurse": "Jane",
-            "day": "Wed",
             "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Jane",
-            "day": "Thu",
+            "day": "Sat",
             "shiftType": "Night",
             "skill": "Nurse"
         },
         {
             "nurse": "Jane",
-            "day": "Fri",
+            "day": "Sun",
             "shiftType": "Night",
             "skill": "Nurse"
         }
