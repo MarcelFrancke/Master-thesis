@@ -1,0 +1,48 @@
+      |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S|
+-----------------------------------------------------------------------
+HN_0  |N|N|N|N|-|-|L| |N|-|-|D|D|N|N| |N|N|-|-|E|D|E| |D|E|E|D|N|N|N|
+HN_1  |E|D|D|E|-|-|D| |D|D|L|-|-|D|D| |E|E|E|D|D|E|E| |-|-|-|-|-|E|N|
+HN_2  |-|-|N|N|-|-|L| |N|N|N|N|N|N|N| |N|-|-|L|N|N|N| |-|-|L|-|-|D|N|
+NU_3  |-|-|-|-|E|E|D| |D|N|-|-|-|N|N| |N|N|-|-|-|E|E| |D|D|D|-|-|-|L|
+NU_4  |N|-|-|D|D|D|E| |-|-|E|-|-|E|E| |L|L|N|N|-|-|E| |N|-|-|D|D|N|N|
+NU_5  |L|L|L|L|-|-|E| |-|-|D|D|E|E|E| |E|D|D|L|L|N|N| |-|-|D|E|E|D|D|
+NU_6  |E|E|E|E|L|L|L| |L|L|L|L|L|L|L| |-|-|-|-|-|-|D| |L|L|L|L|L|L|L|
+NU_7  |D|L|-|-|-|-|E| |D|-|-|-|-|D|D| |N|-|-|-|D|D|D| |E|L|N|N|N|N|N|
+NU_8  |E|L|L|L|N|N|N| |-|-|E|N|-|-|N| |-|-|E|E|L|L|L| |N|N|-|-|L|N|N|
+NU_9  |-|-|-|E|-|-|E| |E|E|-|-|-|D|D| |D|L|L|L|L|L|L| |N|-|-|-|L|L|L|
+NU_10 |-|-|-|D|E|N|N| |-|-|-|E|L|L|L| |L|L|-|-|-|-|D| |L|L|-|-|-|E|E|
+CT_11 |E|E|E|E|N|-|-| |E|E|D|D|-|-|-| |-|-|D|D|D|-|-| |-|N|N|N|-|-|-|
+CT_12 |-|-|L|L|L|L|N| |-|-|N|N|N|-|-| |D|D|D|E|E|-|-| |-|-|-|D|D|D|D|
+CT_13 |-|-|-|D|D|E|E| |E|-|-|-|-|E|E| |E|D|D|-|-|-|-| |E|E|E|N|N|-|-|
+CT_14 |D|D|N|N|N|-|-| |-|E|E|E|-|-|-| |-|N|N|N|-|-|-| |D|D|D|-|-|-|-|
+CT_15 |N|N|N|-|-|-|-| |L|L|L|L|-|-|-| |-|-|E|E|N|-|-| |-|-|-|E|E|E|E|
+TR_16 |E|E|E|E|N|-|-| |-|-|-|N|N|N|N| |N|-|-|D|L|L|L| |N|-|-|D|D|N|N|
+TR_17 |D|D|D|-|-|-|-| |E|E|L|-|-|E|E| |E|E|-|-|-|D|N| |N|N|-|-|-|-|-|
+TR_18 |N|N|N|-|-|E|E| |N|-|-|E|E|D|D| |-|-|D|E|E|-|-| |D|L|L|L|L|-|-|
+TR_19 |L|L|L|-|-|D|D| |D|N|-|-|-|L|L| |L|L|L|-|-|-|-| |D|D|E|E|-|-|-|
+TR_20 |-|-|-|D|D|L|L| |-|-|D|D|D|-|-| |D|D|N|-|-|E|E| |E|D|D|-|-|-|-|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 0
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 1200
+Consecutive constraints: 4455
+Non working days constraints: 60
+Preferences: 20
+Max working weekend: 840
+Complete weekends: 330
+Optimal coverage constraints: 210
+
+------------------------
+
+Total cost: 7115

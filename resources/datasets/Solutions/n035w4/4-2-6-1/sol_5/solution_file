@@ -1,0 +1,62 @@
+      |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S|
+-----------------------------------------------------------------------
+HN_0  |L|L|-|-|-|E|D| |E|N|-|-|-|E|D| |E|N|-|-|-|D|E| |E|E|N|-|-|-|N|
+HN_1  |N|N|N|-|-|D|N| |-|-|D|N|-|-|E| |-|E|-|-|L|N|N| |N|N|-|-|N|N|N|
+HN_2  |D|E|L|-|-|E|E| |D|D|D|L|L|N|N| |-|-|-|-|L|L|N| |-|-|L|-|-|-|D|
+HN_3  |N|-|-|E|-|-|E| |D|D|N|-|-|E|E| |D|L|L|L|L|L|L| |L|-|-|D|E|L|L|
+HN_4  |-|-|-|D|D|E|L| |-|-|-|E|L|-|E| |D|D|E|D|E|E|E| |D|D|E|D|E|E|N|
+HN_5  |-|-|-|D|L|L|N| |-|-|-|E|D|E|E| |E|N|N|-|-|-|E| |E|L|N|N|N|N|N|
+NU_6  |L|-|-|E|-|-|L| |-|-|-|L|L|N|N| |N|-|-|N|-|-|D| |-|-|E|N|N|N|N|
+NU_7  |D|E|E|N|N|N|N| |-|-|-|-|-|L|L| |L|L|L|N|-|-|N| |-|-|-|-|L|L|N|
+NU_8  |D|E|L|L|L|L|L| |-|-|N|N|-|-|E| |E|E|D|D|E|E|N| |N|N|-|-|L|L|N|
+NU_9  |E|E|-|-|E|E|E| |D|D|D|-|-|E|D| |L|-|-|L|-|-|L| |N|N|N|N|N|N|N|
+NU_10 |E|D|N|-|-|E|E| |-|-|-|D|D|D|N| |-|-|N|N|-|-|D| |E|D|L|L|-|-|E|
+NU_11 |-|-|-|D|D|L|L| |L|L|N|-|-|-|E| |L|-|-|-|D|L|L| |-|-|-|E|E|D|D|
+NU_12 |N|-|-|-|D|D|L| |N|N|N|-|E|D|L| |N|N|-|-|-|D|E| |-|-|-|-|-|-|N|
+NU_13 |L|N|-|-|-|E|D| |-|-|-|E|E|D|E| |E|D|-|-|-|E|E| |L|L|N|-|-|-|N|
+NU_14 |L|L|-|-|-|D|E| |D|E|L|-|-|-|E| |N|N|-|-|-|D|E| |E|L|-|-|-|E|E|
+NU_15 |-|-|D|L|-|-|D| |E|N|N|N|N|N|N| |-|-|E|E|-|-|E| |D|E|D|E|D|D|N|
+NU_16 |N|-|-|E|N|N|N| |-|-|E|-|-|E|E| |E|L|N|N|N|N|N| |-|-|D|E|-|-|N|
+CT_17 |E|E|E|D|D|-|-| |D|D|L|L|-|-|-| |D|D|D|-|-|D|D| |D|-|-|L|L|L|L|
+CT_18 |N|N|N|N|N|-|-| |E|E|D|D|D|-|-| |E|E|E|D|D|-|-| |N|N|N|N|N|-|-|
+CT_19 |-|-|-|-|D|D|D| |-|-|-|E|E|E|E| |E|-|L|L|L|-|-| |-|-|-|D|D|D|D|
+CT_20 |D|D|D|E|E|-|-| |E|E|E|-|-|D|D| |D|D|-|-|L|L|L| |-|-|D|D|D|-|-|
+CT_21 |L|L|L|L|L|-|-| |-|E|E|D|D|-|-| |L|L|L|-|-|-|-| |-|E|E|E|-|-|-|
+CT_22 |-|-|-|-|N|N|N| |N|-|-|-|L|L|L| |-|-|-|-|-|L|L| |L|L|-|-|-|-|-|
+CT_23 |L|L|L|-|D|D|D| |-|-|L|L|L|-|-| |-|E|E|E|-|-|-| |D|D|D|-|L|L|L|
+CT_24 |D|D|D|-|-|L|L| |L|L|-|-|D|D|D| |-|-|E|E|E|-|-| |-|-|L|L|L|-|-|
+CT_25 |E|E|L|L|L|-|-| |N|N|N|N|N|-|-| |D|D|D|-|N|N|N| |N|N|-|-|E|E|E|
+CT_26 |-|-|-|-|-|D|D| |D|D|-|-|-|L|L| |L|L|-|-|-|L|L| |L|L|L|-|-|-|-|
+CT_27 |-|-|-|-|-|D|D| |L|L|L|-|-|-|-| |-|N|N|N|N|-|-| |-|L|L|L|-|-|-|
+CT_28 |D|D|E|E|E|-|-| |-|N|N|N|N|-|-| |-|-|D|D|D|-|-| |-|-|-|D|D|L|L|
+TR_29 |D|D|L|L|-|D|D| |D|D|-|-|E|D|D| |-|-|L|L|L|-|-| |L|L|L|-|D|D|D|
+TR_30 |L|L|L|-|E|E|E| |L|L|-|-|D|D|L| |L|-|E|D|D|-|-| |E|E|D|D|D|-|-|
+TR_31 |E|E|D|D|-|-|N| |N|N|N|-|-|-|N| |N|N|-|-|D|D|D| |D|-|-|E|E|L|L|
+TR_32 |N|N|N|N|N|-|-| |E|E|E|L|L|-|-| |D|D|L|-|-|N|N| |N|N|-|-|E|E|D|
+TR_33 |-|-|D|D|D|-|-| |D|D|D|-|-|E|E| |E|-|-|-|E|E|E| |-|-|-|-|L|L|L|
+TR_34 |-|-|-|L|L|L|L| |-|-|N|N|N|-|-| |N|N|N|N|N|-|-| |-|-|N|N|N|N|N|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 0
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 1960
+Consecutive constraints: 6270
+Non working days constraints: 690
+Preferences: 190
+Max working weekend: 1590
+Complete weekends: 660
+Optimal coverage constraints: 600
+
+------------------------
+
+Total cost: 11960

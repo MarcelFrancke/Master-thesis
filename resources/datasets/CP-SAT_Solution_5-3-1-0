@@ -1,0 +1,39 @@
+        |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S| |M|T|W|T|F|S|S|
+-------------------------------------------------------------------------
+Patrick |L|L|N|-|E|N|N| |N|N|N|N|-|N|N| |N|N|N|N|-|-|E| |E|N|-|-|E|E|E|
+Andrea  |E|E|L|L|-|-|L| |L|L|L|-|-|N|N| |N|-|E|E|L|L|L| |L|-|L|N|N|N|N|
+Stefaan |L|N|N|N|-|E|E| |E|L|L|-|-|-|L| |L|L|-|-|E|L|L| |L|L|-|-|-|E|N|
+Sara    |-|-|-|-|E|N|N| |N|N|-|E|E|E|E| |-|-|-|N|N|N|N| |-|N|N|N|N|-|-|
+Nguyen  |-|-|E|E|L|L|L| |-|E|E|L|L|-|-| |E|E|L|L|-|E|E| |E|E|E|-|L|L|L|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 0
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 280
+Consecutive constraints: 555
+Non working days constraints: 420
+Preferences: 50
+Max working weekend: 240
+Complete weekends: 90
+Optimal coverage constraints: 480
+
+------------------------
+
+Total cost: 2115
+Total cost Model: 3650
+
+java -jar validator.jar --sce n012w8/Sc-n012w8.json --his n012w8/H0-n012w8-0.json --weeks n012w8/WD-n012w8-2.json n012w8/WD-n012w8-4.json n012w8/WD-n012w8-3.json n012w8/WD-n012w8-7.json n012w8/WD-n012w8-0.json n012w8/WD-n012w8-5.json n012w8/WD-n012w8-1.json n012w8/WD-n012w8-6.json --sols n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-0-2.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-0-4.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-2-3.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-2-7.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-3-0.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-4-5.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-5-1.json n012w8/Solution_H_0-WD_3-5-0-2-0-4-5-2/Sol-n012w8-5-6.json
+
+n012w8/H0-n012w8-0.json
+
+java -jar validator.jar --sce n040w4/Sc-n040w4.json --his Solutions/H0-n040w4.json --weeks n040w4/WD-n040w4-0.json n040w4/WD-n040w4-1.json n040w4/WD-n040w4-2.json n040w4/WD-n040w4-3.json --sols Solutions/Sol-n005w4-0.json Solutions/Sol-n005w4-1.json Solutions/Sol-n005w4-2.json Solutions/Sol-n005w4-3.json 
