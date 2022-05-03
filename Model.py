@@ -1,6 +1,7 @@
 import copy
 import itertools
 import json
+import os
 
 import params as params
 from numpy.random import random
@@ -12,38 +13,33 @@ from ortools.sat.python import cp_model
 from absl import flags, app
 from google.protobuf import text_format
 import itertools
+import csv
+import matplotlib.pyplot as plt
+import pandas as pd
 
 
-#n030w4_1_6-2-9-1
-FLAGS = flags.FLAGS
-
-flags.DEFINE_string('output_proto', '',
-                    'Output file to write the cp_model proto to.')
-#Runntime formel w×(60+6×n)
-flags.DEFINE_string('params', 'max_time_in_seconds:6000',
-                    'Sat solver parameters.')
-
-def solve_shift_scheduling(params, proto):
+def solve_shift_scheduling(params, weekList, instance, output_path):
     contracts = []
     nurses = []
     shiftTypes = []
+    fieldnames = ["Solution", "Time", "Objective"]
     shiftRepr = ['-', 'E', 'D', 'L', 'N']
     weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     weekDaysSol = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
     shiftReprSol = ['Off', 'Early', 'Day', 'Late', 'Night']
     model = cp_model.CpModel()
 
-    with open('resources/datasets/n021w4/Sc-n021w4.json') as file:
+    with open('resources/datasets/' + instance +'/Sc-' + instance +'.json') as file:
         scenarioDict = json.load(file)
-    # with open('resources/datasets/n005w4/H0-n005w4-0.json') as file:
-    #     historyDict = json.load(file)
-    # with open('resources/datasets/n005w4/WD-n005w4-1.json') as file:
-    #     weekDict = json.load(file)
+
+    with open(output_path + '/' + scenarioDict['id'] + '.csv', 'w', encoding='UTF8', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
 
     def create_weeks(list):
         planningHorizon = []
         for i in range(len(list)):
-            with open('resources/datasets/n021w4/WD-n021w4-' + str(list[i]) + '.json') as file:
+            with open('resources/datasets/' + instance +'/WD-' + instance +'-' + str(list[i]) + '.json') as file:
                 planningHorizon.append(json.load(file))
         return planningHorizon
 
@@ -59,21 +55,43 @@ def solve_shift_scheduling(params, proto):
     for i in nurses:
         if i.contract == "FullTime":
             setattr(i, "contract", contracts[0])
-        else:
+
+        elif i.contract == "PartTime":
             setattr(i, "contract", contracts[1])
 
+        elif i.contract == "HalfTime":
+            setattr(i, "contract", contracts[2])
+
+        else:
+            setattr(i, "contract", contracts[3])
+
     skills = scenarioDict['skills']
-    planningHorizon = create_weeks([0, 1, 2, 3])
+    planningHorizon = create_weeks(weekList)
     all_nurses = range(len(nurses))
     all_working_shifts = range(len(shiftTypes))
     all_shifts = range(len(shiftTypes) + 1)
     all_days = range(len(weekDays) * len(planningHorizon))
     all_skills = range(len(skills))
 
-    shift_sequence_constraints = [(1, 2, 2, 15, 5, 5, 15), (1, 2, 2, 15, 28, 28, 15), (2, 2, 2, 15, 5, 5, 15), (3, 4, 4, 15, 5, 5, 15)]
-    day_off_sequence_constraints = [(2, 2, 30, 3, 3, 30), (2, 2, 30, 5, 5, 30), (3, 3, 30, 5, 5, 30)]
-    working_sequence_constraints = [(3, 3, 30, 5, 5, 30), (3, 3, 30, 5, 5, 30)]
+    def create_sequence_constraints(scData):
+        shift_sequence_constraints = []
 
+        for i in range(len(scData['shiftTypes'])):
+            shift_sequence_constraints.append((i + 1, scData['shiftTypes'][i]['minimumNumberOfConsecutiveAssignments'],
+                                               scData['shiftTypes'][i]['minimumNumberOfConsecutiveAssignments'], 15,
+                                               scData['shiftTypes'][i]['maximumNumberOfConsecutiveAssignments'],
+                                               scData['shiftTypes'][i]['maximumNumberOfConsecutiveAssignments'], 15))
+        return shift_sequence_constraints
+
+    def create_day_off_sequence_constraints(scData):
+        day_off_sequence_constraints = []
+
+        for i in range(len(scData['contracts'])):
+            day_off_sequence_constraints.append((scData['contracts'][i]['minimumNumberOfConsecutiveDaysOff'],
+                                                 scData['contracts'][i]['minimumNumberOfConsecutiveDaysOff'], 30,
+                                                 scData['contracts'][i]['maximumNumberOfConsecutiveDaysOff'],
+                                                 scData['contracts'][i]['maximumNumberOfConsecutiveDaysOff'], 30))
+        return day_off_sequence_constraints
 
     def create_forbidden_succession(scData):
         forbidden_array_str = []
@@ -258,7 +276,7 @@ def solve_shift_scheduling(params, proto):
         # Penalize sums below the soft_min target.
         if soft_min > hard_min and min_cost > 0:
             delta = model.NewIntVar(-len(works), len(works), '')
-            model.Add(delta >= soft_min - sum_var)
+            model.Add(delta == soft_min - sum_var)
             # TODO(user): Compare efficiency with only excess >= soft_min - sum_var.
             excess = model.NewIntVar(0, hard_max, prefix + ': under_sum')
             model.AddMaxEquality(excess, [delta, 0])
@@ -279,9 +297,8 @@ def solve_shift_scheduling(params, proto):
     weekly_demand = create_weekly_demand(planningHorizon, weekDays)
     requests = create_request(planningHorizon, nurses, shiftTypes, weekDays)
     forbidden_shift_succession = create_forbidden_succession(scenarioDict)
-
-    for i in enumerate(weekly_demand):
-        print(i)
+    shift_sequence_constraints = create_sequence_constraints(scenarioDict)
+    day_off_sequence_constraints = create_day_off_sequence_constraints(scenarioDict)
 
     obj_int_vars = []
     obj_int_coeffs = []
@@ -312,8 +329,6 @@ def solve_shift_scheduling(params, proto):
                     model.AddBoolOr(transition)
                 else:
                     temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
-                    for i in enumerate(temp_perm):
-                        print(i)
                     for f in range(len(temp_perm)):
                         transition = [shifts[n, d, previous_shift, temp_perm[f][0]].Not(), shifts[n, d + 1, next_shift, temp_perm[f][1]].Not()]
                         model.AddBoolOr(transition)
@@ -325,29 +340,35 @@ def solve_shift_scheduling(params, proto):
             for f in range(len(skills)):
                 works = [shifts[n, d, s, skills[f]] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
                 min_demand = weekly_demand[0][f][d][s - 1]
-                worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
-                model.Add(worked >= sum(works))
+                opt_demand = weekly_demand[1][f][d][s - 1]
+                #worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
+                #model.Add(worked >= sum(works))
                 name = 'not optimal demand (shift=%i, day=%i)' % (s, d)
+                variables, coeffs = add_soft_sum_constraint(
+                    model, works, min_demand, opt_demand, 30,
+                    len(find_indices(nurses, lambda n: skills[f] in n.skills)), len(find_indices(nurses, lambda n: skills[f] in n.skills)), 30, name)
                 # insufficient = model.NewIntVar(0, len(find_indices(nurses, lambda n: skills[f] in n.skills)) - weekly_demand[1][f][d][s - 1], name)
                 # model.Add(insufficient <= weekly_demand[1][f][d][s - 1] - worked)
-                # obj_int_vars.append(insufficient)
-                # obj_int_coeffs.append(30)
+                obj_bool_vars.extend(variables)
+                obj_bool_coeffs.extend(coeffs)
 
     # # S2: Consecutive shift assignment 1/2
     for ct in shift_sequence_constraints:
         shift, hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = ct
-        for n in all_nurses:
-            for f in range(len(nurses[n].skills)):
-                works = [shifts[n, d, shift, nurses[n].skills[f]] for d in all_days]
-                variables, coeffs = add_soft_sequence_constraint(
-                    model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
-                obj_bool_vars.extend(variables)
-                obj_bool_coeffs.extend(coeffs)
+        one_skill = find_indices(nurses, lambda n: len(n.skills) == 1)
+        for n in range(len(one_skill)):
+            works = [shifts[one_skill[n], d, shift, nurses[one_skill[n]].skills[0]] for d in all_days ]
+            variables, coeffs = add_soft_sequence_constraint(
+                model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
+            obj_bool_vars.extend(variables)
+            obj_bool_coeffs.extend(coeffs)
     #
     # # S2: Consecutive work assignment 2/2
     for n in all_nurses:
-        for f in range(len(nurses[n].skills)):
-            works = [shifts[n, d, 0, nurses[n].skills[f]].Not() for d in all_days]
+        #for f in range(len(nurses[n].skills)):
+        one_skill = find_indices(nurses, lambda n: len(n.skills) == 1)
+        for n in range(len(one_skill)):
+            works = [shifts[one_skill[n], d, 0, nurses[one_skill[n]].skills[0]].Not() for d in all_days]
             variables, coeffs = add_soft_sequence_constraint(
                 model, works, 1, 3, 30, 5, len(all_days), 30, 'cons_work_constraint(employee %i)' % (n))
             obj_bool_vars.extend(variables)
@@ -375,7 +396,6 @@ def solve_shift_scheduling(params, proto):
         obj_bool_coeffs.append(w)
     #
     # # S5: Complete weekends
-    # #TODO: Check why same shifts on weekends are alwasys choosen (Idea: use implications)
     for n in all_nurses:
         for w in range(len(planningHorizon)):
             for d in range(len(weekDays)):
@@ -412,7 +432,6 @@ def solve_shift_scheduling(params, proto):
                 obj_bool_coeffs.extend(coeffs)
     #
     # # S7: Total working weekends
-    # #TODO: Only works with the wrong implementation of S5
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
@@ -431,16 +450,16 @@ def solve_shift_scheduling(params, proto):
         sum(obj_int_vars[i] * obj_int_coeffs[i]
         for i in range(len(obj_int_vars))))
 
-    if proto:
-        print('Writing proto to %s' % proto)
-        with open(proto, 'w') as text_file:
-            text_file.write(str(model))
+    # if proto:
+    #     print('Writing proto to %s' % proto)
+    #     with open(proto + instance, 'w') as text_file:
+    #         text_file.write(str(model))
 
     # Solve the model.
     solver = cp_model.CpSolver()
     if params:
         text_format.Parse(params, solver.parameters)
-    solution_printer = cp_model.ObjectiveSolutionPrinter()
+    solution_printer = cp_model.ObjectiveSolutionPrinter(scenarioDict['id'], output_path)
     #solver.parameters.num_search_workers = 30
     status = solver.Solve(model, solution_printer)
 
@@ -450,7 +469,7 @@ def solve_shift_scheduling(params, proto):
         dicts = []
         for w in range(len(planningHorizon)):
             dicts.append({
-                "scenario": "n005w4",
+                "scenario": scenarioDict['id'],
                 "week": w,
                 "assignments": [],
             })
@@ -467,11 +486,11 @@ def solve_shift_scheduling(params, proto):
                                     }
                                 )
         # Serializing json
-        for w in range(len(planningHorizon)):
+        for w in range(len(weekList)):
             json_object = json.dumps(dicts[w], indent=4)
 
             # Writing to sample.json
-            with open("resources/datasets/Solutions/Sol-n005w4-" + str(w) + ".json", "w") as outfile:
+            with open(output_path +"/Sol-"+ scenarioDict['id'] +"-" + str(weekList[w]) + ".json", "w") as outfile:
                 outfile.write(json_object)
         print(dicts)
 
@@ -522,10 +541,48 @@ def solve_shift_scheduling(params, proto):
     print('  - wall time      : %f s' % solver.WallTime())
     print('  - solutions found: %i' % solution_printer.solution_count())
     print(solver.SolutionInfo())
+    print(solver.ResponseStats())
 
+    with open(output_path + '/' + "response_stats.txt", 'w') as f:
+        f.write(solver.ResponseStats())
+
+    df = pd.read_csv(output_path + '/' + scenarioDict['id'] + '.csv',sep=',')
+    plot = df.plot(x='Time', y='Objective')
+    fig = plot.get_figure()
+    fig.savefig(output_path + "/" + 'plot.png')
 
 def main(_):
-    solve_shift_scheduling(FLAGS.params, FLAGS.output_proto)
+    # n030w4_1_6-2-9-1
+    FLAGS = flags.FLAGS
+
+    parent_path = "/Users/marcelfrancke/PycharmProjects/Masterarbeit/resources/datasets/Solutions/"
+
+    instances = [30, 35, 40]
+    weekData = [[[6, 2, 9, 1], [6, 7, 5, 3]],
+                [[1, 7, 1, 8], [4, 2, 6, 1], [5, 9, 5, 6], [9, 8, 7, 7], [0, 6, 9, 2], [8, 6, 7, 1]],
+                [[2, 0, 6, 1], [6, 1, 0, 6]]
+                ]
+    num_iterations = 10
+
+    for i in range(len(instances)):
+        flags.DEFINE_string('params' + str(i), 'max_time_in_seconds:' + str(4 * (60 + 6 * instances[i])) + '',
+                            'Sat solver parameters.')
+        for j in range(len(weekData[i])):
+            week_comb_path = "-".join(str(x) for x in weekData[i][j])
+            inst_week_path = os.path.join(parent_path + 'n0' + str(instances[i]) + 'w4/', week_comb_path)
+            os.mkdir(inst_week_path)
+            for k in range(num_iterations):
+                num_exp_path = os.path.join(inst_week_path, "sol_" + str(k) + "")
+                os.mkdir(num_exp_path)
+
+                # Runntime formel w×(60+6×n)
+                if i == 0:
+                    solve_shift_scheduling(FLAGS.params0, weekData[i][j], 'n0' + str(instances[i]) + 'w4', num_exp_path)
+                elif i == 1:
+                    solve_shift_scheduling(FLAGS.params1, weekData[i][j], 'n0' + str(instances[i]) + 'w4', num_exp_path)
+                else:
+                    solve_shift_scheduling(FLAGS.params2, weekData[i][j],
+                                           'n0' + str(instances[i]) + 'w4', num_exp_path)
 
 
 if __name__ == '__main__':
