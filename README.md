@@ -10,9 +10,9 @@ Directory structure:
 
 <code><b>experimental_results</b></code>: Solutions and generated plots for instances from the INRC-II.
 
-<code><b>resources</b></code>: Complete datasets of the Competiotionm including test, hidden and public instances.
+<code><b>resources</b></code>: Complete datasets of the Competiotion including test, hidden and public instances.
 
-<code><b>tools</b></code>: Tools privided by the Competition (http://mobiz.vives.be/inrc2/?page_id=245).
+<code><b>tools</b></code>: Tools privided by the Competition for verification or benchmarking purposes (http://mobiz.vives.be/inrc2/?page_id=245).
 
 
 <code><b>Model</b></code>: Developed Model.
