@@ -152,7 +152,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         requests = []
         for w in range(len(wData)):
             for i in wData[w]['shiftOffRequests']:
-                temp = [(find_indices(nurseList, lambda n: i['nurse'] in n.id)),
+                temp = [(find_indices(nurseList, lambda n: i['nurse'] == n.id)),
                         find_indices(shiftList, lambda n: i['shiftType'] in n.id),
                         find_indices(dayList, lambda n: i['day'] in n),
                         [10]]
@@ -333,7 +333,6 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     shifts[(n, d, s, nurses[n].skills[f])] = model.NewBoolVar('shift_n%id%is%if%s' % (n, d, s, nurses[n].skills[f]))
 
 
-
     # H1: Exactly one shift and one skill per day.
     for n in all_nurses:
         for d in all_days:
@@ -483,7 +482,9 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     if params:
         text_format.Parse(params, solver.parameters)
     solution_printer = cp_model.ObjectiveSolutionPrinter(scenarioDict['id'], output_path)
-    #solver.parameters.num_search_workers = 30
+    solver.parameters.num_search_workers = 8
+    solver.parameters.log_search_progress = 1
+    solver.parameters.linearization_level = 2
     status = solver.Solve(model, solution_printer)
 
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
@@ -575,16 +576,16 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     fig.savefig(output_path + "/" + 'plot.png')
 
 def main(_):
-    # n030w4_1_6-2-9-1
     FLAGS = flags.FLAGS
 
-    parent_path = "/resources/datasets/Solutions/"
+    parent_path = "/Users/marcelfrancke/PycharmProjects/Masterarbeit/resources/datasets/Solutions/"
 
     instances = [30, 35, 40]
     weekData = [[[6, 2, 9, 1], [6, 7, 5, 3]],
                 [[1, 7, 1, 8], [4, 2, 6, 1], [5, 9, 5, 6], [9, 8, 7, 7], [0, 6, 9, 2], [8, 6, 7, 1]],
                 [[2, 0, 6, 1], [6, 1, 0, 6]]
                 ]
+
     num_iterations = 10
 
     for i in range(len(instances)):
