@@ -14,7 +14,6 @@ from absl import flags, app
 from google.protobuf import text_format
 import itertools
 import csv
-import matplotlib.pyplot as plt
 import pandas as pd
 
 
@@ -24,10 +23,21 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     Initiates the model and starts the search process.
     Args:
          params: specifies parameters of the solver (e.g. runtime or logs etc.)
+         weekList: defines witch weeks to solve
+         instance: defines witch dataset to solve
+         output_path: defines where the output files will be stored
+     Returns:
+         the solved model with its solution files,
+         the response_stats.txt with the logs from the CP-SAT Solver,
+         a plot with the solution quality over time
     """
+
+    # Initiate the arrays for indexing the objects
     contracts = []
     nurses = []
     shiftTypes = []
+
+    # Representation of objects for output purposes
     fieldnames = ["Solution", "Time", "Objective"]
     shiftRepr = ['-', 'E', 'D', 'L', 'N']
     weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -35,6 +45,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     shiftReprSol = ['Off', 'Early', 'Day', 'Late', 'Night']
     model = cp_model.CpModel()
 
+    # Read the scenario and week files and stores them into a dictionary
     with open('resources/datasets/' + instance +'/Sc-' + instance +'.json') as file:
         scenarioDict = json.load(file)
 
@@ -42,13 +53,16 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
 
+
     def create_weeks(list):
+        """ Loads the week files and stores them """
         planningHorizon = []
         for i in range(len(list)):
             with open('resources/datasets/' + instance +'/WD-' + instance +'-' + str(list[i]) + '.json') as file:
                 planningHorizon.append(json.load(file))
         return planningHorizon
 
+    # Creates objects from the dictionaries
     for i in scenarioDict['contracts']:
         contracts.append(Contract(i))
 
@@ -58,6 +72,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     for i in scenarioDict['shiftTypes']:
         shiftTypes.append(Shift(i))
 
+    # Assigns the contracts to the nurses
     for i in nurses:
         if i.contract == "FullTime":
             setattr(i, "contract", contracts[0])
@@ -71,6 +86,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         else:
             setattr(i, "contract", contracts[3])
 
+    # Index representation for variable creation and iteration purposes
     skills = scenarioDict['skills']
     planningHorizon = create_weeks(weekList)
     all_nurses = range(len(nurses))
@@ -80,6 +96,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     all_skills = range(len(skills))
 
     def create_sequence_constraints(scData):
+        """Creates the tuple for the S2 part 1 constraints: (shifts, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty)"""
         shift_sequence_constraints = []
 
         for i in range(len(scData['shiftTypes'])):
@@ -90,6 +107,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         return shift_sequence_constraints
 
     def create_day_off_sequence_constraints(scData):
+        """Creates the tuple for the S2 part 2 constraints: (shifts, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty)"""
         day_off_sequence_constraints = []
 
         for i in range(len(scData['contracts'])):
@@ -100,6 +118,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         return day_off_sequence_constraints
 
     def create_forbidden_succession(scData):
+        """Creates tuple for forbidden shift successions: (previous_shift, next_shift)"""
         forbidden_array_str = []
         forbidden_array_int = []
         for i in range(len(scData['forbiddenShiftTypeSuccessions'])):
@@ -118,12 +137,10 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
             temp3 = list(map(lambda x: 4 if x=='Night' else x,temp2))
 
             forbidden_array_int.append(temp3)
-
-            #res = [item.replace('Early', 1) for item in forbidden_array[i]]
-
         return forbidden_array_int
 
     def create_weekly_demand(wData, wDays):
+        """Creates four dimensional array for weekly demand: [[min_demand[skill[day[shift]]], [opt_demand[skill[day[shift]]]]"""
         min_demand = []
         opt_demand = []
 
@@ -146,9 +163,12 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         return min_demand, opt_demand
 
     def find_indices(lst, condition):
+        """Helper function to get indexes from elements in an array
+         that satisfy a specific condition """
         return [i for i, elem in enumerate(lst) if condition(elem)]
 
     def create_request(wData, nurseList, shiftList, dayList):
+        """Creates tuple for sift off request: (employee, shift, day, weight)"""
         requests = []
         for w in range(len(wData)):
             for i in wData[w]['shiftOffRequests']:
@@ -300,6 +320,8 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         return cost_variables, cost_coefficients
 
     def evaluate_or(a, b, c):
+        """Adds or constraint depending of the variable c"""
+
         # Either a or b or both must be 1 if c is 1.
         model.AddBoolOr([a, b]).OnlyEnforceIf(c)
 
@@ -307,18 +329,22 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         model.AddBoolAnd([a.Not(), b.Not()]).OnlyEnforceIf([c.Not()])
 
     def evaluate_and(a, b, c):
+        """Adds and constraint depending of the variable c"""
+
         # Both a and b must be 1 if c is 1
         model.AddBoolAnd([a, b]).OnlyEnforceIf(c)
 
         # Either a or b or both must be 0 if c is 0.
         model.AddBoolOr([a.Not(), b.Not()]).OnlyEnforceIf(c.Not())
 
+    # Initiate the information encodings for constraint propagation
     weekly_demand = create_weekly_demand(planningHorizon, weekDays)
     requests = create_request(planningHorizon, nurses, shiftTypes, weekDays)
     forbidden_shift_succession = create_forbidden_succession(scenarioDict)
     shift_sequence_constraints = create_sequence_constraints(scenarioDict)
     day_off_sequence_constraints = create_day_off_sequence_constraints(scenarioDict)
 
+    # Initiate arrays for objective function
     obj_int_vars = []
     obj_int_coeffs = []
     obj_bool_vars = []
@@ -349,6 +375,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                                   shifts[n, d + 1, next_shift, nurses[n].skills[0]].Not()]
                     model.AddBoolOr(transition)
                 else:
+                    # Permutation of the skills
                     temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
                     for f in range(len(temp_perm)):
                         transition = [shifts[n, d, previous_shift, temp_perm[f][0]].Not(), shifts[n, d + 1, next_shift, temp_perm[f][1]].Not()]
@@ -421,16 +448,20 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                         sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
                         aux_a = model.NewBoolVar('A')
                         aux_b = model.NewBoolVar('B')
+                        # A or B == C
                         evaluate_or(shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]],
                                     shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]],
                                     aux_a)
+                        # not(A) or not(B) == D
                         evaluate_or(shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]].Not(),
                                     shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]].Not(),
                                     aux_b)
+                        # C and D == E
                         evaluate_and(aux_a, aux_b, sat_week_var)
                         obj_bool_vars.append(sat_week_var)
                         obj_bool_coeffs.append(30)
                     else:
+                        # Permutation of the skills
                         temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
                         for f in range(len(temp_perm)):
                             sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
@@ -471,22 +502,26 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     obj_bool_vars.extend(variables)
                     obj_bool_coeffs.extend(coeffs)
 
+    # Objective function
     model.Minimize(
         sum(obj_bool_vars[i] * obj_bool_coeffs[i]
         for i in range(len(obj_bool_vars))) +
         sum(obj_int_vars[i] * obj_int_coeffs[i]
         for i in range(len(obj_int_vars))))
 
-    # Solve the model.
+    # Initiates Solver
     solver = cp_model.CpSolver()
     if params:
         text_format.Parse(params, solver.parameters)
     solution_printer = cp_model.ObjectiveSolutionPrinter(scenarioDict['id'], output_path)
+    # Adds further parameters
     solver.parameters.num_search_workers = 8
     solver.parameters.log_search_progress = 1
     solver.parameters.linearization_level = 2
+    # Solve the model
     status = solver.Solve(model, solution_printer)
 
+    # Generate solution files
     if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
         print()
         header = '          '
@@ -518,6 +553,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                 outfile.write(json_object)
         print(dicts)
 
+        # Outputs shift plans
         print()
         header = '          '
         for w in range(len(planningHorizon)):
@@ -532,6 +568,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                             schedule += shiftRepr[s] + ' '
             print(' nurse %i: %s' % (n, schedule))
 
+        # Outputs skills chosen for specific days
         print()
         header = '          '
         for w in range(len(planningHorizon)):
@@ -546,6 +583,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                             skill_schedule += str(skills.index(nurses[n].skills[f])) + ' '
             print(' nurse %i: %s' % (n, skill_schedule))
 
+        # Output constraint violations
         print('Penalties:')
         for i, var in enumerate(obj_bool_vars):
             if solver.BooleanValue(var):
@@ -558,6 +596,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                 print('  %s violated by %i, linear penalty=%i' %
                       (var.Name(), solver.Value(var), obj_int_coeffs[i]))
 
+    # Output some statistics about the search process
     print('\nStatistics')
     print('  - status          : %s' % solver.StatusName(status))
     print('  - conflicts      : %i' % solver.NumConflicts())
@@ -567,9 +606,11 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     print(solver.SolutionInfo())
     print(solver.ResponseStats())
 
+    # Create file for detailed log results
     with open(output_path + '/' + "response_stats.txt", 'w') as f:
         f.write(solver.ResponseStats())
 
+    # Create plot for solution quality over time
     df = pd.read_csv(output_path + '/' + scenarioDict['id'] + '.csv',sep=',')
     plot = df.plot(x='Time', y='Objective')
     fig = plot.get_figure()
@@ -588,6 +629,7 @@ def main(_):
 
     num_iterations = 10
 
+    # Structure of the experiments
     for i in range(len(instances)):
         flags.DEFINE_string('params' + str(i), 'max_time_in_seconds:' + str(4 * (60 + 6 * instances[i])) + '',
                             'Sat solver parameters.')
@@ -599,7 +641,6 @@ def main(_):
                 num_exp_path = os.path.join(inst_week_path, "sol_" + str(k) + "")
                 os.mkdir(num_exp_path)
 
-                # Runntime formel w×(60+6×n)
                 if i == 0:
                     solve_shift_scheduling(FLAGS.params0, weekData[i][j], 'n0' + str(instances[i]) + 'w4', num_exp_path)
                 elif i == 1:
