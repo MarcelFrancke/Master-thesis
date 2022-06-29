@@ -1,0 +1,130 @@
+Starting CP-SAT solver v9.3.10497
+Parameters: max_time_in_seconds: 960 log_search_progress: true linearization_level: 1 num_search_workers: 8
+
+Initial optimization model '':
+#Variables: 166080 (#bools:158171 #ints:261 in objective)
+  - 98 in [-28,28]
+  - 65 in [-23,23]
+  - 30 in [-17,17]
+  - 1 in [-12,12]
+  - 9 in [-8,8]
+  - 18 in [-5,5]
+  - 40 in [-4,4]
+  - 165031 in [0,1]
+  - 138 in [0,4]
+  - 78 in [0,5]
+  - 30 in [0,17]
+  - 76 in [0,23]
+  - 98 in [0,28]
+  - 54 in [1,4]
+  - 52 in [1,5]
+  - 112 in [1,17]
+  - 33 in [1,23]
+  - 49 in [1,28]
+  - 56 in [2,23]
+  - 12 in [3,23]
+#kBoolOr: 172549 (#literals: 2279190)
+#kExactlyOne: 1204 (#literals: 7952)
+#kLinMax: 261
+#kLinear2: 261
+#kLinearN: 527 (#terms: 7583)
+
+Starting presolve at 0.03s
+[ExtractEncodingFromLinear] #potential_supersets=1204 #potential_subsets=192 #at_most_one_encodings=0 #exactly_one_encodings=0 #unique_terms=0 #multiple_terms=0 #literals=0 time=0.00122283s
+[Probing] deterministic_time: 0.179958 (limit: 1) wall_time: 0.156751 (165139/165139)
+[Probing]  - new fixed Boolean: 166 (180/165139)
+[Probing]  - new binary clause: 1209
+[SAT presolve] num removable Booleans: 1123 / 166080
+[SAT presolve] num trivial clauses: 11
+[SAT presolve] [0s] clauses:232473 literals:2257198 vars:155120 one_side_vars:150736 simple_definition:1836 singleton_clauses:0
+[SAT presolve] [0.0158815s] clauses:196215 literals:2156602 vars:154115 one_side_vars:149731 simple_definition:1836 singleton_clauses:0
+[SAT presolve] [0.0209396s] clauses:196215 literals:2156602 vars:154115 one_side_vars:149731 simple_definition:1836 singleton_clauses:0
+[MaxClique] Merged 49770(99554 literals) into 49716(99500 literals) at_most_ones.
+[DetectDuplicateConstraints] #duplicates=0 time=0.0708469s
+[DetectDominatedLinearConstraints] #relevant_constraints=217 #work_done=13014 #num_inclusions=0 #num_redundant=0 time=0.0019375s
+[DetectOverlappingColumns] #processed_columns=0 #work_done=0 #nz_reduction=0 time=0.080018s
+[ProcessSetPPC] #relevant_constraints=197102 #num_inclusions=3 work=6668905 time=0.0613162s
+
+Presolve summary:
+  - 594 affine relations were detected.
+  - rule 'TODO dual: tighten at most one' was applied 16 times.
+  - rule 'affine: new relation' was applied 594 times.
+  - rule 'at_most_one: duplicate literals' was applied 10 times.
+  - rule 'at_most_one: removed literals' was applied 8 times.
+  - rule 'at_most_one: transformed into max clique.' was applied 1 time.
+  - rule 'bool_or: always true' was applied 10442 times.
+  - rule 'bool_or: fixed literals' was applied 634 times.
+  - rule 'bool_or: implications' was applied 14753 times.
+  - rule 'domination: added implications' was applied 132562 times.
+  - rule 'dual: enforced equivalence' was applied 11 times.
+  - rule 'dual: fix variable' was applied 14 times.
+  - rule 'exactly_one: removed literals' was applied 72 times.
+  - rule 'exactly_one: singleton' was applied 4 times.
+  - rule 'exactly_one: x and not(x)' was applied 312 times.
+  - rule 'false enforcement literal' was applied 88 times.
+  - rule 'lin_max: converted to equality' was applied 10 times.
+  - rule 'lin_max: removed exprs' was applied 10 times.
+  - rule 'lin_max: target domain reduced' was applied 261 times.
+  - rule 'linear: fixed or dup variables' was applied 36 times.
+  - rule 'linear: negative clause' was applied 175 times.
+  - rule 'linear: reduced variable domains' was applied 261 times.
+  - rule 'linear: remapped using affine relations' was applied 330 times.
+  - rule 'linear: singleton column' was applied 200 times.
+  - rule 'linear: singleton column in equality and in objective.' was applied 10 times.
+  - rule 'linear: variable substitution 0' was applied 135 times.
+  - rule 'objective: expanded objective constraint.' was applied 51 times.
+  - rule 'presolve: 180 unused variables removed.' was applied 1 time.
+  - rule 'presolve: iteration' was applied 1 time.
+
+Presolved optimization model '':
+#Variables: 164957 (#bools:158930 #ints:179 in objective)
+  - 7 in [-22,1]
+  - 8 in [-21,1]
+  - 1 in [-21,2]
+  - 22 in [-20,1]
+  - 9 in [-20,2]
+  - 3 in [-19,1]
+  - 15 in [-19,2]
+  - 30 in [-15,1]
+  - 4 in [-14,13]
+  - 13 in [-13,11]
+  - 6 in [-13,14]
+  - 8 in [-11,13]
+  - 3 in [-10,17]
+  - 15 in [-7,17]
+  - 16 in [-4,1]
+  - 2 in [-3,1]
+  - 20 in [-1,2]
+  - 164647 in [0,1]
+  - 45 in [0,2]
+  - 8 in [0,3]
+  - 3 in [0,4]
+  - 23 in [0,6]
+  - 13 in [0,11]
+  - 12 in [0,13]
+  - 6 in [0,14]
+  - 18 in [0,17]
+#kAtMostOne: 30 (#literals: 128)
+#kBoolAnd: 68020 (#enforced: 68020) (#literals: 111776)
+#kBoolOr: 146449 (#literals: 2057070)
+#kExactlyOne: 888 (#literals: 6811)
+#kLinMax: 251
+#kLinearN: 217 (#terms: 4333)
+
+Preloading model.
+#Bound   2.53s best:inf   next:[0,33182155] initial_domain
+
+Starting Search at 2.67s with 8 workers.
+6 full subsolvers: [default_lp, no_lp, max_lp, core, reduced_costs, pseudo_costs]
+Interleaved subsolvers: [feasibility_pump, rnd_var_lns_default, rnd_cst_lns_default, graph_var_lns_default, graph_cst_lns_default, rins_lns_default, rens_lns_default]
+#Bound   3.73s best:inf   next:[1570,33182155] default_lp initial_propagation
+#Bound   4.28s best:inf   next:[5510,33182155] default_lp
+#Bound   4.29s best:inf   next:[5750,33182155] default_lp
+#Bound   4.30s best:inf   next:[5840,33182155] default_lp
+#Bound   4.31s best:inf   next:[5885,33182155] default_lp
+#Bound  24.49s best:inf   next:[6205,33182155] max_lp
+#Bound  28.20s best:inf   next:[7505,33182155] reduced_costs
+#Bound  30.11s best:inf   next:[7830,33182155] reduced_costs
+#Bound  41.50s best:inf   next:[7885,33182155] reduced_costs
+#Bound  58.86s best:inf   next:[7890,33182155] reduced_costs
+#Bound  61.76s best:inf   next:[7900,33182155] reduced_costs

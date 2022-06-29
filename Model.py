@@ -1,11 +1,11 @@
-import copy
-import itertools
+__author__ = 'Marcel Francke'
+__version__ = '1.0'
+__email__ = 'marcel.francke@unibw.de'
+__type__ = 'Master thesis'
+__description__ = 'Model for solving instances of the static problem proposed in the INRC-II '
+
 import json
 import os
-
-import params as params
-from numpy.random import random
-
 from elements.Contract import Contract
 from elements.Nurse import Nurse
 from elements.Shift import Shift
@@ -18,7 +18,13 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
+
 def solve_shift_scheduling(params, weekList, instance, output_path):
+    """
+    Initiates the model and starts the search process.
+    Args:
+         params: specifies parameters of the solver (e.g. runtime or logs etc.)
+    """
     contracts = []
     nurses = []
     shiftTypes = []
@@ -187,8 +193,8 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
     def add_soft_sequence_constraint(model, works, hard_min, soft_min, min_cost,
                                      soft_max, hard_max, max_cost, prefix):
         """Sequence constraint on true variables with soft and hard bounds.
-      This constraint look at every maximal contiguous sequence of variables
-      assigned to true. If forbids sequence of length < hard_min or > hard_max.
+      This constraint looks at every maximal contiguous sequence of variables
+      assigned to true. It forbids sequence of length < hard_min or > hard_max.
       Then it creates penalty terms if the length is < soft_min or > soft_max.
       Args:
         model: the sequence constraint is built on this model.
@@ -223,7 +229,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     span.append(lit)
                     model.AddBoolOr(span)
                     cost_literals.append(lit)
-                    # We filter exactly the sequence with a short length.
+                    # Filter exactly the sequence with a short length.
                     # The penalty is proportional to the delta with soft_min.
                     cost_coefficients.append(min_cost * (soft_min - length))
 
@@ -277,7 +283,6 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         if soft_min > hard_min and min_cost > 0:
             delta = model.NewIntVar(-len(works), len(works), '')
             model.Add(delta == soft_min - sum_var)
-            # TODO(user): Compare efficiency with only excess >= soft_min - sum_var.
             excess = model.NewIntVar(0, hard_max, prefix + ': under_sum')
             model.AddMaxEquality(excess, [delta, 0])
             cost_variables.append(excess)
@@ -293,6 +298,20 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
             cost_coefficients.append(max_cost)
 
         return cost_variables, cost_coefficients
+
+    def evaluate_or(a, b, c):
+        # Either a or b or both must be 1 if c is 1.
+        model.AddBoolOr([a, b]).OnlyEnforceIf(c)
+
+        # a and b must both be 0 if c is 0
+        model.AddBoolAnd([a.Not(), b.Not()]).OnlyEnforceIf([c.Not()])
+
+    def evaluate_and(a, b, c):
+        # Both a and b must be 1 if c is 1
+        model.AddBoolAnd([a, b]).OnlyEnforceIf(c)
+
+        # Either a or b or both must be 0 if c is 0.
+        model.AddBoolOr([a.Not(), b.Not()]).OnlyEnforceIf(c.Not())
 
     weekly_demand = create_weekly_demand(planningHorizon, weekDays)
     requests = create_request(planningHorizon, nurses, shiftTypes, weekDays)
@@ -314,10 +333,13 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     shifts[(n, d, s, nurses[n].skills[f])] = model.NewBoolVar('shift_n%id%is%if%s' % (n, d, s, nurses[n].skills[f]))
 
 
+
     # H1: Exactly one shift and one skill per day.
     for n in all_nurses:
         for d in all_days:
-            model.AddExactlyOne((shifts[n, d, s, nurses[n].skills[f]] for s in all_shifts for f in range(len(nurses[n].skills))))
+            model.AddExactlyOne((shifts[n, d, s, nurses[n].skills[f]]
+                                 for s in all_shifts
+                                 for f in range(len(nurses[n].skills))))
 
     # H3: Forbidden shift successions
     for previous_shift, next_shift, cost in forbidden_shift_succession:
@@ -341,18 +363,15 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                 works = [shifts[n, d, s, skills[f]] for n in find_indices(nurses, lambda n: skills[f] in n.skills)]
                 min_demand = weekly_demand[0][f][d][s - 1]
                 opt_demand = weekly_demand[1][f][d][s - 1]
-                #worked = model.NewIntVar(min_demand, len(find_indices(nurses, lambda n: skills[f] in n.skills)), '')
-                #model.Add(worked >= sum(works))
                 name = 'not optimal demand (shift=%i, day=%i)' % (s, d)
                 variables, coeffs = add_soft_sum_constraint(
                     model, works, min_demand, opt_demand, 30,
                     len(find_indices(nurses, lambda n: skills[f] in n.skills)), len(find_indices(nurses, lambda n: skills[f] in n.skills)), 30, name)
-                # insufficient = model.NewIntVar(0, len(find_indices(nurses, lambda n: skills[f] in n.skills)) - weekly_demand[1][f][d][s - 1], name)
-                # model.Add(insufficient <= weekly_demand[1][f][d][s - 1] - worked)
+
                 obj_bool_vars.extend(variables)
                 obj_bool_coeffs.extend(coeffs)
 
-    # # S2: Consecutive shift assignment 1/2
+    # S2: Consecutive shift assignment 1/2
     for ct in shift_sequence_constraints:
         shift, hard_min, soft_min, min_cost, hard_max, soft_max, max_cost = ct
         one_skill = find_indices(nurses, lambda n: len(n.skills) == 1)
@@ -362,10 +381,9 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                 model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'cons_shift_constraint(employee %i, shift %i)' % (n, shift))
             obj_bool_vars.extend(variables)
             obj_bool_coeffs.extend(coeffs)
-    #
-    # # S2: Consecutive work assignment 2/2
+
+    # S2: Consecutive work assignment 2/2
     for n in all_nurses:
-        #for f in range(len(nurses[n].skills)):
         one_skill = find_indices(nurses, lambda n: len(n.skills) == 1)
         for n in range(len(one_skill)):
             works = [shifts[one_skill[n], d, 0, nurses[one_skill[n]].skills[0]].Not() for d in all_days]
@@ -374,7 +392,7 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
             obj_bool_vars.extend(variables)
             obj_bool_coeffs.extend(coeffs)
 
-    # # S3: Consecutive Days Off
+    # S3: Consecutive Days Off
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
@@ -385,8 +403,8 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     model, works, 1, soft_min, min_cost, soft_max, len(all_days), max_cost, 'day_off_sequence_constraint(employee %i)' % (n))
                 obj_bool_vars.extend(variables)
                 obj_bool_coeffs.extend(coeffs)
-    #
-    # # S4: Preferences
+
+    # S4: Preferences
     for n, s, d, w in requests:
         preference = [shifts[n, d, s, nurses[n].skills[f]] for f in range(len(nurses[n].skills))]
         pref_var = model.NewBoolVar('preference (employee=%i, day=%i, shift=%i)' % (n, d, s))
@@ -394,32 +412,42 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         model.AddBoolOr(preference)
         obj_bool_vars.append(pref_var)
         obj_bool_coeffs.append(w)
-    #
-    # # S5: Complete weekends
+
+    # S5: Complete weekends
     for n in all_nurses:
         for w in range(len(planningHorizon)):
             for d in range(len(weekDays)):
                 if (nurses[n].contract.completeWeekends == 1 and weekDays[d] == "Saturday"):
                     if len(nurses[n].skills) == 1:
-                        sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]].Not(),
-                                        shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]]]
                         sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
-                        sat_weekends.append(sat_week_var)
-                        model.AddExactlyOne(sat_weekends)
+                        aux_a = model.NewBoolVar('A')
+                        aux_b = model.NewBoolVar('B')
+                        evaluate_or(shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]],
+                                    shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]],
+                                    aux_a)
+                        evaluate_or(shifts[n, d + (w * len(weekDays)), 0, nurses[n].skills[0]].Not(),
+                                    shifts[n, d + (w * len(weekDays)) + 1, 0, nurses[n].skills[0]].Not(),
+                                    aux_b)
+                        evaluate_and(aux_a, aux_b, sat_week_var)
                         obj_bool_vars.append(sat_week_var)
                         obj_bool_coeffs.append(30)
                     else:
                         temp_perm = [p for p in itertools.product(nurses[n].skills, repeat=2)]
                         for f in range(len(temp_perm)):
-                            sat_weekends = [shifts[n, d + (w * len(weekDays)), 0, temp_perm[f][0]].Not(),
-                                            shifts[n, d + (w * len(weekDays)) + 1, 0, temp_perm[f][1]]]
                             sat_week_var = model.NewBoolVar('complete weekend (employee=%i, week=%i)' % (n, w))
-                            sat_weekends.append(sat_week_var)
-                            model.AddExactlyOne(sat_weekends)
+                            aux_a = model.NewBoolVar('A')
+                            aux_b = model.NewBoolVar('B')
+                            evaluate_or(shifts[n, d + (w * len(weekDays)), 0, temp_perm[f][0]],
+                                        shifts[n, d + (w * len(weekDays)) + 1, 0, temp_perm[f][1]],
+                                        aux_a)
+                            evaluate_or(shifts[n, d + (w * len(weekDays)), 0, temp_perm[f][0]].Not(),
+                                        shifts[n, d + (w * len(weekDays)) + 1, 0, temp_perm[f][1]].Not(),
+                                        aux_b)
+                            evaluate_and(aux_a, aux_b, sat_week_var)
                             obj_bool_vars.append(sat_week_var)
                             obj_bool_coeffs.append(30)
-    #
-    # # S6: Total assignments
+
+    # S6: Total assignments
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
@@ -430,8 +458,8 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
                     nurses[cn[n]].contract.maximumNumberOfAssignments, len(all_days), 20, 'total_assignments(employee %s, contract %s)' % (nurses[cn[n]].id, nurses[cn[n]].contract.id))
                 obj_bool_vars.extend(variables)
                 obj_bool_coeffs.extend(coeffs)
-    #
-    # # S7: Total working weekends
+
+    # S7: Total working weekends
     for c in range(len(contracts)):
         cn = find_indices(nurses, lambda n: contracts[c].id == n.contract.id)
         for n in range(len(cn)):
@@ -449,11 +477,6 @@ def solve_shift_scheduling(params, weekList, instance, output_path):
         for i in range(len(obj_bool_vars))) +
         sum(obj_int_vars[i] * obj_int_coeffs[i]
         for i in range(len(obj_int_vars))))
-
-    # if proto:
-    #     print('Writing proto to %s' % proto)
-    #     with open(proto + instance, 'w') as text_file:
-    #         text_file.write(str(model))
 
     # Solve the model.
     solver = cp_model.CpSolver()
@@ -555,7 +578,7 @@ def main(_):
     # n030w4_1_6-2-9-1
     FLAGS = flags.FLAGS
 
-    parent_path = "/Users/marcelfrancke/PycharmProjects/Masterarbeit/resources/datasets/Solutions/"
+    parent_path = "/resources/datasets/Solutions/"
 
     instances = [30, 35, 40]
     weekData = [[[6, 2, 9, 1], [6, 7, 5, 3]],
